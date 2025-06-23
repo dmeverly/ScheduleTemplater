@@ -32,6 +32,7 @@ class validStaffConstraint(Enum):
     NO_DAY_AFTER_NIGHT = 'No Day After Night'
     MIN_REST = 'Min Rest' 
     MINIMUM_HOURS = 'Minimum Hours'
+    ONE_PER_DAY = "One Shift Per Day"
 
 class validGlobalConstraint(Enum):
     D1_SHIFTS_FILLED = 'Dayshifts 1 Filled'
@@ -97,6 +98,10 @@ class Constraint:
                         if schedule[w, d, s] is emp:
                             total += HOURSPERSHIFT
             return total <= self.val
+        
+        if self.name == validStaffConstraint.ONE_PER_DAY.value:
+            cnt = sum(1 for s in range(S) if schedule[week, day, s] is emp)
+            return cnt <= 1
 
         # DAYSHIFTS_PER_WEEK (slots 0 & 1)
         if self.name == validStaffConstraint.DAYSHIFTS_PER_WEEK.value:
@@ -279,6 +284,7 @@ class Employee:
         self.addConstraint(validStaffConstraint.CONSECUTIVE_DAYS, 3, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.MIN_REST, True, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.MINIMUM_HOURS, 80 * self.FTE * 0.8, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.ONE_PER_DAY, True, constraintType.ABSOLUTE)
 
         for day in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'):
             self.addConstraint(getattr(validStaffConstraint, f'CAN_WORK_{day.upper()}'), True, constraintType.RELATIVE)
@@ -305,7 +311,7 @@ class Employee:
                 self.changeConstraint(validStaffConstraint.CAN_WORK_WEDNESDAY,
                                     Constraint(validStaffConstraint.CAN_WORK_WEDNESDAY.value, False, constraintType.ABSOLUTE))
                 self.changeConstraint(validStaffConstraint.CONSECUTIVE_DAYS,
-                                    Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 5, constraintType.ABSOLUTE))
+                                    Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 4, constraintType.ABSOLUTE))
             case "Liz":
                 self.changeConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK,
                                     Constraint(validStaffConstraint.DAYSHIFTS_PER_WEEK.value, 0, constraintType.ABSOLUTE))
@@ -328,12 +334,13 @@ class staffRoster(Enum):
     Ashley = Employee('Ashley', 1)
 
 class ScheduleBalancer:
-    def __init__(self, state: np.ndarray, daypool: list[Employee],nightpool: list[Employee], floatpool: list[Employee]):
+    def __init__(self, state: np.ndarray, daypool: list[Employee],nightpool: list[Employee], floatpool: list[Employee], unfilled: list[Employee]):
         self.state = state
         self.daypool = daypool
         self.nightpool = nightpool
         self.floatpool = floatpool
-        self.all_employees = daypool + nightpool + floatpool + [staffRoster.UNFILLED.value]
+        self.all_employees = daypool + nightpool + floatpool
+        self.unfilled = unfilled
         self.constraints: list[Constraint] = []
         # Global constraints
         self.addConstraint(validGlobalConstraint.D1_SHIFTS_FILLED, True, constraintType.ABSOLUTE)
@@ -360,19 +367,44 @@ class ScheduleBalancer:
     def addConstraint(self, which: validGlobalConstraint, val: float, ctype: constraintType):
         self.constraints.append(Constraint(which.value, val, ctype))
 
-    def isValidSchedule(self, printMode=False, schedule=None):
+    #separate the relative constraint violations, this should only check if the schedule is valid (ie: no absolute violations)
+    def isValidSchedule(self, schedule=None):
         
         sched = schedule if schedule is not None else self.state
         W,D,S = sched.shape
-        g_abs = g_rel = s_abs = s_rel = 0
+        globalAbsViolation = globalRelViolation = staffAbsViolation = staffRelViolation = 0
         violations = []
         for c in self.constraints:
             ok = c.isSatisfied(sched, None, None, None)
             if c.ctype == constraintType.ABSOLUTE and not ok:
-                g_abs += 1
+                return False
+        
+        for w in range(W):
+            for d in range(D):
+                for s in range(S):
+                    emp = sched[w,d,s]
+                    if emp is None or emp.name=='UNFILLED':
+                        continue
+                    for c in emp.getConstraints():
+                        ok = c.isSatisfied(sched, w, d, s)
+                        if c.ctype == constraintType.ABSOLUTE and not ok:
+                            return False
+
+        return True
+
+    def numViolations(self, schedule=None):
+        
+        sched = schedule if schedule is not None else self.state
+        W,D,S = sched.shape
+        globalAbsViolation = globalRelViolation = staffAbsViolation = staffRelViolation = 0
+        violations = []
+        for c in self.constraints:
+            ok = c.isSatisfied(sched, None, None, None)
+            if c.ctype == constraintType.ABSOLUTE and not ok:
+                globalAbsViolation += 1
                 violations.append(f"global absolute violation {c.name}")
             elif c.ctype == constraintType.RELATIVE and not ok:
-                g_rel += 1
+                globalRelViolation += 1
                 violations.append(f"global relative violation {c.name}")
         
         for w in range(W):
@@ -384,13 +416,22 @@ class ScheduleBalancer:
                     for c in emp.getConstraints():
                         ok = c.isSatisfied(sched, w, d, s)
                         if c.ctype == constraintType.ABSOLUTE and not ok:
-                            s_abs +=1
+                            staffAbsViolation +=1
                             violations.append(f"{emp} absolute violation {c.name} on {w}{d}{s}")
                         elif c.ctype == constraintType.RELATIVE and not ok:
-                            s_rel +=1
+                            staffRelViolation +=1
                             violations.append(f"{emp} relative violation {c.name} on {w}{d}{s}")
-        if(printMode):
-            for violation in violations:
-                print(violation)
 
-        return g_abs, g_rel, s_abs, s_rel
+        return globalAbsViolation, globalRelViolation, staffAbsViolation, staffRelViolation, violations
+    
+    #separate the relative constraint violations, this should only check if the schedule is valid (ie: no absolute violations)
+    def printViolations(self, schedule=None):
+        globalAbsViolation, globalRelViolation, staffAbsViolation, staffRelViolation, violations = self.numViolations(schedule)
+        
+        for violation in violations:
+            print(violation)
+        
+        print(f"Global Abs Violation: {globalAbsViolation}")
+        print(f"Global Rel Violation: {globalRelViolation}")
+        print(f"Staff Abs Violation: {staffAbsViolation}")
+        print(f"Staff Rel Violation: {staffRelViolation}")

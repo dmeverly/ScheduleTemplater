@@ -7,10 +7,13 @@ from helpers import (
     constraintType,
     Employee,
 )
+import math
 
 ABS_PENALTY = 10000
-EPOCH_LIMIT = 1000
+EPOCH_LIMIT = 10000
 SHIFTLENGTH = 12  # hours
+TEMPERATURE = 10000
+COOLING = 0.9995
 
 class Solver:
     def __init__(self, balancer: ScheduleBalancer, daypool: list[Employee],
@@ -27,9 +30,8 @@ class Solver:
         self.current_score = self.score(self.state)
         self.lastRejected = None
 
-        # Annealing parameters
-        self.temperature = 1000.0
-        self.cooling_rate = 0.9999
+        self.temperature = TEMPERATURE
+        self.cooling_rate = COOLING
 
     # dict table of hours used per pay for each employee, used to check valid assignments
     def _calculate_hours_used(self, schedule: np.ndarray) -> dict:
@@ -46,7 +48,7 @@ class Solver:
     # find most appropriate employee to fill a slot
     def _select_employee_for_slot(self, schedule, w, d, s, hours_map):
         best_candidate = self.unfilled
-        best_delta = float('inf')
+        best_combined = float('inf')
 
         original_emp = schedule[w, d, s]
 
@@ -90,14 +92,14 @@ class Solver:
             trial_score = self.score(schedule)
             schedule[w, d, s] = original_emp
             delta = trial_score - self.current_score
-            #print(f"Trying {emp.name} at {w}{d}{s} → ΔScore={delta}")
-
-            # Favor lowest delta
-            if delta < best_delta:
+            softCost = self._soft_cost_eval(schedule, w, d, s, emp)
+            combined = delta*100 + softCost   # weight Δscore heavily, plus a small soft cost
+            
+            if combined < best_combined:
                 best_candidate = emp
-                #print(f'selected {best_candidate}')
-                best_delta = delta
-            elif delta == best_delta:
+                best_combined   = combined
+
+            elif combined == best_combined:
                 # Tiebreak: prefer less-used employee
                 if hours_map[w].get(emp, 0) < hours_map[w].get(best_candidate, 9999):
                     best_candidate = emp
@@ -218,6 +220,7 @@ class Solver:
         if self.lastRejected:
             choices = [c for c in choices if c != self.lastRejected] + [self.lastRejected]
 
+        #fill all the unfilled shifts until no more moves can be made
         for (w, d, s) in choices:
             if self.state[w, d, s] is not self.unfilled:
                 continue
@@ -232,16 +235,41 @@ class Solver:
                 trial_state[w, d, s] = candidate
                 trial_hours[w][candidate] += SHIFTLENGTH
                 self.lastRejected = (w, d, s)
+                #print(f"propose {candidate.name} to {w}{d}{s}")
                 return trial_state, trial_hours
+        
+        W,D,S = self.state.shape
+        #shuffle choices, find violations, try 2-way swap 
+        violations = []
+        for w in range(W):
+            for d in range(D):
+                if d in (weekdays.Saturday.value, weekdays.Sunday.value):
+                    continue
+                for s in range(S):
+                    emp = self.state[w,d,s]
+                    if emp is self.unfilled: continue
+                    for c in emp.getConstraints():
+                        if not c.isSatisfied(self.state, w, d, s):
+                            violations.append((w,d,s))
+                            break
+        if len(violations) < 2:
+            return None, None
 
-        self.lastRejected = choices[-1]
-        return None, None
+        # pick two random distinct violating slots
+        (w1,d1,s1), (w2,d2,s2) = random.sample(violations, 2)
+        trial_state = self.state.copy()
+        trial_hours = self.hours_used.copy()
+        emp1, emp2 = trial_state[w1,d1,s1], trial_state[w2,d2,s2]
+        # swap them
+        trial_state[w1,d1,s1], trial_state[w2,d2,s2] = emp2, emp1
+        # update hours_map if needed...
+        return trial_state, trial_hours
 
     # score constraint violations and unfilled shifts +1 for each relative violation and +5 for each unfilled shift, + ABS_PENALTY for absolute violations
     def score(self, schedule):
-        g_abs, g_rel, s_abs, s_rel = self.balancer.isValidSchedule(False, schedule)
+        g_abs, g_rel, s_abs, s_rel, _ = self.balancer.numViolations(schedule=schedule)
         # penalize unfilled
-        W, D, S = schedule.shape
+        W, _, _ = schedule.shape
         for w in range(W):
             for d in range(7):
                 downstaff = d in (weekdays.Saturday.value, weekdays.Sunday.value,
@@ -253,88 +281,112 @@ class Solver:
                         g_abs += 5
         return (g_abs + s_abs) * ABS_PENALTY + g_rel + s_rel
 
+    def acceptOffer(self,new_score):
+        if new_score < self.current_score:
+            return 1.0
+        elif self.temperature <= 0:
+            return 0.0
+        else:
+            return math.exp((self.current_score-new_score)/self.temperature)
+
+    def cool(self, acceptRate):
+        coolingFactor = 1.0-(acceptRate-0.5)/2
+        coolingFactor = max(0.9, min(1.1,coolingFactor))
+        self.temperature *= self.cooling_rate
+    
     # agent driver, fills initial schedule by greedy best search on most constrained variables
     # after schedule is full, searches to minimize cost by filling vacant shifts and looking for valid swaps
     # finally, searches for underworked employees and attempts to find slot to place them in
-    def run_annealing(self):
+    def greedySearch(self):
         print("Starting greedy initialization...")
-        
-        choices = self.slot_order()
-        for (w, d, s) in choices:
-            if self.state[w, d, s] is self.unfilled:
-                emp = self._select_employee_for_slot(self.state, w, d, s, self.hours_used)
-                if emp is not self.unfilled:
-                    self.state[w, d, s] = emp
-                    self.hours_used[w][emp] += SHIFTLENGTH
                     
         best_state = self.state.copy()
         best_score = self.current_score
         history_epochs, history_scores = [], []
-        epoch = 0
+        epoch = tolerance = acceptCounter = 0
 
         while epoch < EPOCH_LIMIT and best_score > 0:
-            choices = self.slot_order()
             epoch += 1
-            print(f"Epoch {epoch}, current score: {self.current_score}")
-            self.temperature *= self.cooling_rate
-            if self.temperature < 1e-4:
-                print("Temperature too low, stopping annealing.")
-                break
-            
+            #print(f"Epoch {epoch}, current score: {self.current_score}, heat: {self.temperature}")
+
             # propose move into slot
             new_state, h_map = self.propose_move()
             if new_state is None:
                 break
             new_score = self.score(new_state)
-            delta = new_score - self.current_score
+            prob = self.acceptOffer(new_score)
 
-            # if score is better, take it. Otherwise, randomly take by simulated annealing
-            if delta < 0 or random.random() < np.exp(-delta / self.temperature):
+            if random.random() < prob:
+                #print("Accept")
                 self.state, self.hours_used, self.current_score = new_state, h_map, new_score
                 self.lastRejected = None
+                acceptCounter += 1
+            # else:
+            #     print("Reject")
 
             if self.current_score < best_score:
                 best_state, best_score = self.state.copy(), self.current_score
                 best_hours = self.hours_used
+            
+            acceptRate = acceptCounter/epoch
+            self.cool(acceptRate)
 
             history_epochs.append(epoch)
             history_scores.append(self.current_score)
 
         # print post-annealing, pre-repair
-        print("Starting post‑annealing repair…")
+        print("Starting post‑Greedy repair…")
         
-        self.state, self.current_score = best_state, best_score
+        self.state, self.current_score, self.hours_used = best_state, best_score, best_hours
         self.balancer.state = self.state
         print(f"Greedy best state\n{self.balancer}")
-        self.balancer.isValidSchedule(printMode=True)
+        #self.balancer.printViolations()
+        print(f"Score: {self.current_score}")
+
+        print("-----------------Greedy Phase Complete--------------")
 
         # repair phase
-        self.state, history_epochs, history_scores = self.repair_schedule(history_epochs, history_scores)
+        self.state, history_epochs, history_scores, violations = self.repair_schedule(history_epochs, history_scores)
+
         self.current_score = self.score(self.state)
         self.balancer.state = self.state
 
         # print post-repair
         print(f"After Repair state\n{self.balancer}")
-        self.balancer.isValidSchedule(printMode=True)
-
+        #self.balancer.printViolations()
+        print(f"Score: {self.current_score}")
+        print("-----------------Repair Phase Complete--------------")
+        print("-----------------Filling Minimums--------------")
+        self.finalFillMinimums()
+        self.current_score = self.score(self.state)
+        print(f"Score: {self.current_score}")
+        print("-----------------Final Sweep--------------")
+        self.finalPass()
+        self.balancer.state = self.state
+        self.current_score = self.score(self.state)
         # final score, return for graphing
         print("Template complete. Score =", self.current_score)
         return self.state, self.current_score, history_epochs, history_scores
 
-    # find violations in completed schedule and the best employee to fill them
-    def repair_schedule(self, history_epochs, history_score, max_iters=1000):
-        def find_violations():
+    def find_violations(self):
             vio = []
             W, D, S = self.state.shape
             for w in range(W):
                 for d in range(D):
+                    if d in (weekdays.Saturday.value, weekdays.Sunday.value):
+                        continue
                     for s in range(S):
                         emp = self.state[w, d, s]
                         if emp is self.unfilled:
                             continue
                         for c in emp.getConstraints():
                             if not c.isSatisfied(self.state, w, d, s):
+                                if c.name == validStaffConstraint.MINIMUM_HOURS.value:
+                                    continue
                                 vio.append((emp, c, w, d, s))
+            # for violation in vio:
+            #     print(f"{violation[0].name} {violation[1].name} {violation[2]}{violation[3]}{violation[4]}")
+
             # global holes
             for w in range(W):
                 for d in range(D):
@@ -345,18 +397,21 @@ class Solver:
                                     vio.append((self.unfilled, gc, w, d, s))
                                     break
             return vio
-
+    
+    # find violations in completed schedule and the best employee to fill them
+    def repair_schedule(self, history_epochs, history_score):
+        vio = self.find_violations()
         iters = 0
         improved = True
         W, D, S = self.state.shape
 
-        while improved and iters < max_iters:
+        while improved:
             iters += 1
             history_epochs.append(len(history_epochs)+1)
             history_score.append(self.current_score)
             improved = False
             current_score = self.score(self.state)
-            violations = find_violations()
+            violations = self.find_violations()
 
             # one entry per slot
             seen = set()
@@ -367,6 +422,8 @@ class Solver:
                     slot_vio.append((emp, w, d, s))
 
             for emp, w, d, s in slot_vio:
+                if d in (weekdays.Saturday.value, weekdays.Sunday.value):
+                    continue
                 if emp is self.unfilled:
                     # try fill hole
                     cand = self._select_employee_for_slot(self.state, w, d, s, self.hours_used)
@@ -380,9 +437,13 @@ class Solver:
                     done = False
                     for w2 in range(W):
                         for d2 in range(D):
+                            if d2 in (weekdays.Saturday.value, weekdays.Sunday.value):
+                                continue
                             for s2 in range(S):
                                 emp2 = self.state[w2, d2, s2]
                                 if emp2 is self.unfilled or (w2,d2,s2)==(w,d,s):
+                                    continue
+                                if (any(self.state[w2,d2,:]) is emp) or (any(self.state[w,d,:]) is emp2):
                                     continue
                                 if self.try_swap(w, d, s, w2, d2, s2, current_score):
                                     improved = done = True
@@ -392,10 +453,10 @@ class Solver:
                     if improved:
                         break
 
-        print("Finished repairs in", iters, "iterations." if improved else f"No further repairs after {iters}")
+        print("Finished repairs in", iters, "iterations." if improved else f"No further repairs after {iters} epochs")
         # ensure numpy shape
         self.state = np.array(self.state)
-        return self.state, history_epochs, history_score
+        return self.state, history_epochs, history_score, slot_vio
 
     # swap method to reassign 2 employees to each other's shifts and check constraints
     # if improved, keep and return True, otherwise revert and return false
@@ -419,3 +480,193 @@ class Solver:
         # undo
         self.state[w, d, s], self.state[w2, d2, s2] = emp1, emp2
         return False
+    
+    def finalPass(self):
+        # after your normal repair_schedule()…
+        # make absolutely sure we’ve fixed every ABSOLUTE violation:
+        self.balancer.state = self.state
+        _, _, staff_abs, _ , _= self.balancer.numViolations(schedule=self.state)
+
+        # keep looping on *only* absolute violations
+        while staff_abs > 0:
+            print(f"Extra abs‐fix pass: {staff_abs} absolute violations remain")
+            W, D, S = self.state.shape
+
+            # find the first absolute violation slot
+            found = False
+            for w in range(W):
+                if found: break
+                for d in range(D):
+                    if found: break
+                    for s in range(S):
+                        emp = self.state[w,d,s]
+                        if emp is self.unfilled: 
+                            # unfilled may also violate a required fill constraint
+                            slot_emp = self.unfilled
+                        else:
+                            # see if emp violates any ABSOLUTE here
+                            abs_bads = [c for c in emp.getConstraints()
+                                        if c.ctype == constraintType.ABSOLUTE
+                                        and not c.isSatisfied(self.state, w, d, s)]
+                            if not abs_bads:
+                                continue
+                            slot_emp = emp
+
+                        # try to *fix* this slot by selecting a different employee
+                        # (reuse your helper)
+                        candidate = self._select_employee_for_slot(self.state, w, d, s, self.hours_used)
+                        if candidate is not self.unfilled and candidate is not slot_emp:
+                            print(f"  fixing ABS slot {w}{d}{s}: {slot_emp.name} → {candidate.name}")
+                            # update hours_used
+                            if slot_emp is not self.unfilled:
+                                self.hours_used[w][slot_emp] -= SHIFTLENGTH
+                            self.state[w,d,s] = candidate
+                            self.hours_used[w][candidate] += SHIFTLENGTH
+                            found = True
+                            break
+                    # end slot
+            if not found:
+                # nothing fillable — try pair‐wise swap:
+                # look for two slots whose swap removes an absolute
+                for w1 in range(W):
+                    for d1 in range(D):
+                        for s1 in range(S):
+                            e1 = self.state[w1,d1,s1]
+                            if e1 is self.unfilled:
+                                continue
+                            # does e1 violate abs at (w1,d1,s1)?
+                            if all(c.isSatisfied(self.state,w1,d1,s1) for c in e1.getConstraints() if c.ctype==constraintType.ABSOLUTE):
+                                continue
+
+                            for w2 in range(W):
+                                for d2 in range(D):
+                                    for s2 in range(S):
+                                        e2 = self.state[w2,d2,s2]
+                                        if e2 is self.unfilled:
+                                            continue
+                                        # try swapping e1↔e2
+                                        self.state[w1,d1,s1], self.state[w2,d2,s2] = e2, e1
+                                        # check both abs slots
+                                        ok1 = all(c.isSatisfied(self.state,w1,d1,s1)
+                                                for c in e2.getConstraints() if c.ctype==constraintType.ABSOLUTE)
+                                        ok2 = all(c.isSatisfied(self.state,w2,d2,s2)
+                                                for c in e1.getConstraints() if c.ctype==constraintType.ABSOLUTE)
+                                        if ok1 and ok2:
+                                            print(f"  swap ABS fix: ({w1}{d1}{s1}){e1.name}↔({w2}{d2}{s2}){e2.name}")
+                                            found = True
+                                            break
+                                        # undo
+                                        self.state[w1,d1,s1], self.state[w2,d2,s2] = e1, e2
+                                    if found: break
+                                if found: break
+                            if found: break
+                        if found: break
+                    if found: break
+
+            if not found:
+                # if we couldn’t fix any slot, bail out to avoid infinite loop
+                print("⚠️  Could not repair an absolute violation — giving up.")
+                break
+
+            # re‐count remaining absolute violations
+            _ , _, staff_abs, _, _ = self.balancer.numViolations()
+
+    def finalFillMinimums(self):
+        W, D, S = self.state.shape
+        SH = SHIFTLENGTH
+
+        # 1) Re-compute under-worked AFTER repair
+        underworked: dict[Employee, list[tuple[int,int]]] = {}
+        for emp in self.allPool:
+            if emp is self.unfilled:
+                continue
+            min_h = next((c.val for c in emp.getConstraints()
+                          if c.name == validStaffConstraint.MINIMUM_HOURS.value), None)
+            if min_h is None:
+                continue
+            for pp_start in range(0, W, 2):
+                used = 0
+                for w in (pp_start, pp_start+1):
+                    if w>=W: break
+                    for d in range(D):
+                        for s in range(S):
+                            if self.state[w,d,s] is emp:
+                                used += SH
+                if used < min_h:
+                    underworked.setdefault(emp, []).append((pp_start, min_h - used))
+
+        # quick helper to test absolute feasibility
+        def is_feasible(emp, w, d, s):
+            # must be empty
+            if self.state[w,d,s] is not self.unfilled:
+                return False
+
+            # tentatively place
+            self.state[w,d,s] = emp
+
+            #  a) emp-level ABS
+            for c in emp.getConstraints():
+                if c.ctype == constraintType.ABSOLUTE and not c.isSatisfied(self.state, w, d, s):
+                    self.state[w,d,s] = self.unfilled
+                    return False
+
+            #  b) global ABS (scan whole schedule)
+            for gc in self.balancer.constraints:
+                if gc.ctype == constraintType.ABSOLUTE and not gc.isSatisfied(self.state, None, None, None):
+                    self.state[w,d,s] = self.unfilled
+                    return False
+
+            # undo
+            self.state[w,d,s] = self.unfilled
+            return True
+
+        # 2) Fill best Δ‐score slots first
+        for emp, needs in underworked.items():
+            for pp_start, missing in needs:
+                slots_needed = math.ceil(missing / SH)   # ceiling
+                # gather all feasible holes
+                candidates = []
+                for w in (pp_start, pp_start+1):
+                    if w>=W: continue
+                    for d in range(D):
+                        for s in range(S):
+                            if is_feasible(emp, w, d, s):
+                                # measure Δscore
+                                before = self.score(self.state)
+                                self.state[w,d,s] = emp
+                                after  = self.score(self.state)
+                                self.state[w,d,s] = self.unfilled
+                                candidates.append(((w,d,s), after - before))
+                # pick the slots with the most negative Δ
+                for (w,d,s), delta in sorted(candidates, key=lambda x: x[1])[:slots_needed]:
+                    print(f"FinalFill: {emp.name}@{w}{d}{s} Δscore={delta}")
+                    self.state[w,d,s] = emp
+
+        # 3) Re-check who’s still underworked, and force into D2 weekday holes
+        for emp, needs in underworked.items():
+            min_h = next(c.val for c in emp.getConstraints()
+                         if c.name==validStaffConstraint.MINIMUM_HOURS.value)
+            for pp_start, _ in needs:
+                # recompute used
+                used = 0
+                for w in (pp_start, pp_start+1):
+                    if w>=W: break
+                    for d in range(D):
+                        for s in range(S):
+                            if self.state[w,d,s] is emp:
+                                used += SH
+                if used >= min_h:
+                    continue
+
+                more_needed = math.ceil((min_h - used) / SH)
+                holes = []
+                for w in (pp_start, pp_start+1):
+                    if w>=W: continue
+                    for d in (weekdays.Monday.value,
+                              weekdays.Wednesday.value,
+                              weekdays.Thursday.value):
+                        if self.state[w,d,1] is self.unfilled and is_feasible(emp,w,d,1):
+                            holes.append((w,d,1))
+                for w,d,s in holes[:more_needed]:
+                    print(f"FallbackFill: {emp.name}@{w}{d}{s}")
+                    self.state[w,d,s] = emp

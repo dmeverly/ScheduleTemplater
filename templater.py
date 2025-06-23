@@ -1,6 +1,6 @@
 import numpy as np
 import random
-# Ensure Solver is imported correctly
+
 from Solver import Solver
 from helpers import (
     weekdays,
@@ -54,7 +54,7 @@ class Templater:
         day_rotation_base = [e for e in (self.day_pool + self.float_pool) if e.name != "David" and e.name != "UNFILLED"]
         night_rotation_base = [e for e in (self.float_pool + self.night_pool) if e.name != "David" and e.name != "UNFILLED"]
         
-        # infinitely extending copies of rotation pools
+        # extend pools
         day_rotation = day_rotation_base[:]  
         while len(day_rotation) < weeks * 2:
             day_rotation.extend(day_rotation_base[:])
@@ -70,9 +70,6 @@ class Templater:
             print("Warning: Night rotation pool is critically empty for weekends. Using UNFILLED.")
             night_rotation = [self.unfilled] * (schedule.shape[0] * 2)
 
-
-        weeks, _, _ = schedule.shape
-
         for w in range(weeks):
             for d in (weekdays.Saturday.value, weekdays.Sunday.value):
                 # Sunday inherits from Saturday for consistency in weekend pair
@@ -87,6 +84,8 @@ class Templater:
                         schedule[w,d,2] = emp_n
                         night_rotation.append(emp_n)
                     else:
+                        print("night pool empty")
+                        exit(1)
                         schedule[w,d,2] = self.unfilled
 
                     schedule[w,d,1] = self.unfilled # D2 is UNFILLED
@@ -100,6 +99,8 @@ class Templater:
                             schedule[w,d,1] = other_emp_d2 # Other person is D2
                             day_rotation.append(other_emp_d2)
                         else:
+                            print("day pool empty")
+                            exit(1)
                             schedule[w,d,1] = self.unfilled # Fallback if day pool empty
 
                     else: # Odd week: One other person + UNFILLED for day shifts
@@ -109,6 +110,8 @@ class Templater:
                             schedule[w,d,0] = other_emp_d1 # Other person is D1
                             day_rotation.append(other_emp_d1)
                         else:
+                            print("day pool empty")
+                            exit(2)
                             schedule[w,d,0] = self.unfilled # Fallback if day pool empty
                         
         return schedule
@@ -161,6 +164,7 @@ def isFeasible(employees, total_weeks=WEEKS):
         return True
 
 #output a CSV of template
+#CSV reader and writer not fully implemented
 def export_schedule_to_csv(schedule: np.ndarray, path: str):
     """
     Writes out a CSV with columns: week,day,slot,employee_name
@@ -177,6 +181,7 @@ def export_schedule_to_csv(schedule: np.ndarray, path: str):
                     name = emp.name if emp is not None else ''
                     writer.writerow([w, d, s, name])
 
+#not fully implemented
 def import_schedule_from_csv(path: str, weeks: int, days: int=7, slots: int=3) -> np.ndarray:
     """
     Reads the CSV back into a numpy array of shape (weeks, days, slots).
@@ -209,39 +214,46 @@ def createFigure(epochs, scores):
 
 # Main execution block
 if __name__ == "__main__":
+    # ---------------------------------- INITIALIZATIONS -------------------------------------------
     templater = Templater()
     employees = templater.employees
     daypool = templater.day_pool
     nightpool = templater.night_pool
     floatpool = templater.float_pool
+    unfilled = templater.unfilled
 
     initial_schedule = templater.makeTemplate(WEEKS)
     
     # Initialize ScheduleBalancer with the initial schedule
-    schedule_balancer = ScheduleBalancer(initial_schedule, daypool, nightpool, floatpool) 
-    # Pass the ScheduleBalancer instance to the Solver,
-    # along with the employee pools and unfilled employee for convenience
+    schedule_balancer = ScheduleBalancer(initial_schedule, daypool, nightpool, floatpool, unfilled) 
 
-    agent = Solver(schedule_balancer, daypool, nightpool, floatpool, templater.unfilled)
+    # ---------------------------------- SOLVING FUNCTIONS -------------------------------------------
+    agent = Solver(schedule_balancer, daypool, nightpool, floatpool, unfilled)
 
     if not isFeasible(employees, total_weeks=WEEKS):
         exit(0)
 
-    schedule, final_score, epochs, scores = agent.run_annealing()
+    schedule, final_score, epochs, scores = agent.greedySearch()
     
+    # ---------------------------------- EVAL AND PRINTING FUNCTIONS -------------------------------------------
+
     print("\n--- Final Best Solution ---")
-    # Set the ScheduleBalancer's state to the final optimized state for printing
+
+    #schedule balancer contains the print functions
     schedule_balancer.state = schedule
     print(schedule_balancer)
-    
-    globalAbsViolation, globalRelViolation, staffAbsViolation, staffRelViolation = schedule_balancer.isValidSchedule(printMode=True, schedule=schedule)
-    print(f"Global Abs Violation: {globalAbsViolation}")
-    print(f"Global Rel Violation: {globalRelViolation}")
-    print(f"Staff Abs Violation: {staffAbsViolation}")
-    print(f"Staff Rel Violation: {staffRelViolation}")
+    schedule_balancer.printViolations()
+
+    #separate abs and rel violation counts from isValidSchedule
+    if not schedule_balancer.isValidSchedule():
+        print("Invalid Schedule Created")
+  
     print(f"Final Score: {final_score}")
+
+    #print, graph, export to csv  
     export_schedule_to_csv(schedule, PATHOUT)
 
+    #hours count per employee per week
     weeks, days, slots = schedule.shape
     for emp in employees:
         total_hours = 0
@@ -263,4 +275,5 @@ if __name__ == "__main__":
                             total_hours += SHIFTLENGTH
             print(f"  Weeks {pay_start}-{pay_start+1}: {total_hours} hrs")
     
+    #print figure
     createFigure(epochs, scores)
