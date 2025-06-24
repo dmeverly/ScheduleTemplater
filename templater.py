@@ -11,9 +11,10 @@ from helpers import (
 import csv
 import matplotlib.pyplot as pp
 import pandas as pd
+from openpyxl.utils import get_column_letter
 
 PATHIN = "startingTemplate.csv"
-PATHOUT = 'template.csv'
+PATHOUT = 'template.xlsx'
 WEEKS = 4
 SHIFTLENGTH = 12 #hours
 NUM_SHIFTS = 3  # D1, D2, N
@@ -151,23 +152,191 @@ class Templater:
 
     #output a CSV of template
     #CSV reader and writer not fully implemented
-    def export_schedule_to_csv(self, schedule: np.ndarray):
-        """
-        Writes out a CSV with columns: week,day,slot,employee_name
-        schedule.shape == (weeks, 7, 3)
-        """
-        weeks, days, slots = schedule.shape
-        with open(PATHOUT, 'w', newline='') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(['week','day','slot','employee'])
-            for w in range(weeks):
-                for d in range(days):
-                    for s in range(slots):
-                        emp = schedule[w, d, s]
-                        name = emp.name if emp is not None else ''
-                        writer.writerow([w, d, s, name])
+    # def export_schedule_to_csv(self, schedule: np.ndarray):
+    #     """
+    #     Writes out a CSV with columns: week,day,slot,employee_name
+    #     schedule.shape == (weeks, 7, 3)
+    #     """
+    #     weeks, days, slots = schedule.shape
+    #     with open(PATHOUT, 'w', newline='') as csvfile:
+    #         writer = csv.writer(csvfile)
+    #         writer.writerow(['week','day','slot','employee'])
+    #         for w in range(weeks):
+    #             for d in range(days):
+    #                 for s in range(slots):
+    #                     emp = schedule[w, d, s]
+    #                     name = emp.name if emp is not None else ''
+    #                     writer.writerow([w, d, s, name])
 
-    #not fully implemented
+    def export_schedule_to_xlsx(self, schedule: np.ndarray):
+        W, D, S = schedule.shape
+        SHIFT_HOURS = 12
+        day_names = ['Mo','Tu','We','Th','Fr','Sa','Su']
+
+        # 1) Build D1, D2, N tables
+        tables = {}
+        for idx, label in enumerate(('D1','D2','N')):
+            data = []
+            for w in range(W):
+                row = []
+                for d in range(7):
+                    row.append(schedule[w,d,idx].name if schedule[w,d,idx].name!='UNFILLED' else '')
+                data.append(row)
+
+            while len(data) < W:
+                data.append(['']*7)
+
+            tables[label] = pd.DataFrame(data, columns=day_names).assign(Week=lambda df: df.index + 1).set_index('Week')
+
+        # 2) Build the summary DataFrame
+        all_emps = {e for e in schedule.flatten() if e.name!='UNFILLED'}
+        summary_rows = []
+        for emp in sorted(all_emps, key=lambda e: e.name):
+            total_hours = day_shifts = night_shifts = weekday_days = weekend_days = 0
+            for w in range(W):
+                for d in range(7):
+                    worked = False
+                    for s in range(3):
+                        if schedule[w,d,s] is emp:
+                            worked = True
+                            total_hours += SHIFT_HOURS
+                            if s in (0,1):
+                                day_shifts += 1
+                            else:
+                                night_shifts += 1
+                    if worked:
+                        if d in (weekdays.Saturday.value, weekdays.Sunday.value):
+                            weekend_days += 1
+                        else:
+                            weekday_days += 1
+            summary_rows.append([
+                emp.name, total_hours, day_shifts, night_shifts, weekday_days, weekend_days
+            ])
+        summary_df = pd.DataFrame(
+            summary_rows,
+            columns=[
+                'Employee',
+                'Total Hours',
+                'Day Shifts',
+                'Night Shifts',
+                'Weekdays Worked',
+                'Weekend Days Worked',
+            ]
+        )
+
+        # 3) Build per-employee sheets
+        personal_dfs = {}
+        for emp in sorted(all_emps, key=lambda e: e.name):
+            rows = []
+            for w in range(W):
+                week_hours = 0
+                week_row = []
+                for d in range(7):
+                    slot = ''
+                    for s,label in [(0,'D1'),(1,'D2'),(2,'N')]:
+                        if schedule[w,d,s] is emp:
+                            slot = label
+                            week_hours += SHIFT_HOURS
+                            break
+                    week_row.append(slot)
+                rows.append([w+1] + week_row + [week_hours])
+            personal_dfs[emp.name] = pd.DataFrame(
+                rows,
+                columns=['Week'] + day_names + ['Hours']
+            )
+
+        # 4) Write everything to Excel
+        with pd.ExcelWriter(PATHOUT, engine='openpyxl') as writer:
+            ws = None
+
+            # 4a) Master sheet: three tables stacked
+            shift_labels = [('D1', 'Day 1'), ('D2', 'Day 2'), ('N', 'Night')]
+
+            
+            current_row_offset = 0
+            for i, (key, label) in enumerate(shift_labels):
+                # Calculate the starting row for each table.
+                # Add 2 for initial spacing, then (W+5) for each table block
+                # (W rows + header + index + spacing)
+                start_row = current_row_offset + 2
+                df = tables[key]
+
+                # Write the DataFrame to the 'Master' sheet
+                df.to_excel(
+                    writer,
+                    sheet_name='Master',
+                    startrow=start_row,
+                    startcol=0,
+                    index=True,  # Write the 'Week' index as a column
+                    header=True  # Write the column headers
+                )
+
+                # Get the worksheet object after the first write to avoid errors
+                if ws is None:
+                    ws = writer.book['Master']
+
+                # Add a descriptive heading above each shift table
+                # This heading should be merged across columns
+                ws.cell(row=start_row, column=1).value = f"{label} Shifts"
+                ws.merge_cells(
+                    start_row=start_row,
+                    start_column=1,
+                    end_row=start_row,
+                    end_column=1 + len(day_names) + 1  # 1 for 'Week' column, 1 for extra cell for aesthetics
+                )
+
+                # Adjust column headers explicitly if needed, but pd.to_excel usually handles this.
+                # The user's original code sets them again; ensure no duplication or overwrite issues.
+                # The 'Week' column header is handled by `index=True` in to_excel.
+                # 'day_names' are handled by `header=True`.
+
+                # Update the row offset for the next table
+                current_row_offset = start_row + len(df) + 3 # Add rows of df + header + index + 2 for spacing
+
+            # 4b) Summary heading + table below the last N table
+            summary_start_row = current_row_offset + 2 # Add some space after the last shift table
+
+            # Merge "Summary" across columns A-F (or as many columns as the summary_df has)
+            # The summary_df has 6 columns
+            ws.merge_cells(
+                start_row=summary_start_row,
+                start_column=1,
+                end_row=summary_start_row,
+                end_column=len(summary_df.columns)
+            )
+            ws.cell(row=summary_start_row, column=1).value = "Summary"
+
+            # Write the summary DataFrame
+            summary_df.to_excel(
+                writer,
+                sheet_name='Master',
+                startrow=summary_start_row + 1,  # Start after the 'Summary' heading
+                startcol=0,
+                index=False, # Do not write DataFrame index
+                header=True  # Write column headers
+            )
+
+            # 4c) Write each personal sheet
+            for name, df in personal_dfs.items():
+                # Ensure sheet name is <= 31 characters, which is an Excel limit
+                df.to_excel(writer, sheet_name=name[:31], index=False)
+
+            # 5) Auto-size all columns on the 'Master' sheet for better readability
+            if ws: # Ensure ws exists before trying to iterate
+                for column_cells in ws.columns:
+                    max_length = 0
+                    column = column_cells[0].column # Get the column number
+                    for cell in column_cells:
+                        try:
+                            # Calculate length based on cell value, handling None
+                            if cell.value is not None:
+                                max_length = max(max_length, len(str(cell.value)))
+                        except Exception:
+                            pass # Ignore errors for cells that might not have a simple string representation
+                    adjusted_width = (max_length + 2) # Add a small buffer
+                    ws.column_dimensions[get_column_letter(column)].width = adjusted_width
+
+
     def import_schedule_from_csv(self) -> np.ndarray:
         
         df = pd.read_csv(PATHIN, header=None)
@@ -281,7 +450,7 @@ if __name__ == "__main__":
     print(f"Final Score: {final_score}")
 
     #print, graph, export to csv  
-    templater.export_schedule_to_csv(schedule)
+    templater.export_schedule_to_xlsx(schedule)
 
     #hours count per employee per week
     weeks, days, slots = schedule.shape
