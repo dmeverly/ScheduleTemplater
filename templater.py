@@ -10,10 +10,14 @@ from helpers import (
 )
 import csv
 import matplotlib.pyplot as pp
+import pandas as pd
 
+PATHIN = "startingTemplate.csv"
 PATHOUT = 'template.csv'
-WEEKS = 12
+WEEKS = 4
 SHIFTLENGTH = 12 #hours
+NUM_SHIFTS = 3  # D1, D2, N
+DAYS_PER_WEEK = 7
 
 class Templater:
     def __init__(self):
@@ -34,6 +38,8 @@ class Templater:
 
             # Check for day/night shift restrictions (0 shifts per week)
             for c in emp.getConstraints():
+                if emp.name == "UNFILLED":
+                    continue
                 if c.name == validStaffConstraint.NIGHTSHIFTS_PER_WEEK.value and c.val == 0:
                     can_do_nights = False
                 if c.name == validStaffConstraint.DAYSHIFTS_PER_WEEK.value and c.val == 0:
@@ -44,7 +50,8 @@ class Templater:
             elif can_do_nights and not can_do_days:
                 nightpool.append(emp)
             else:
-                floatpool.append(emp)
+                if emp.name != "UNFILLED":
+                    floatpool.append(emp)
 
         return daypool, nightpool, floatpool
 
@@ -117,9 +124,13 @@ class Templater:
         return schedule
 
     #takes number of desired weeks, creates
-    def makeTemplate(self, numWeeks: int) -> np.ndarray:
+    def makeTemplate(self, numWeeks: int, fill=False) -> np.ndarray:
         weeks, days, slots = numWeeks, 7, 3
         schedule = np.empty((weeks, days, slots), dtype=object)
+
+        if fill:
+            schedule = self.import_schedule_from_csv()
+            return schedule
 
         for week in range(weeks):
             for day in range(days):
@@ -132,10 +143,79 @@ class Templater:
                 #every other week, assign david to d2 on wednesday
                 if week % 2 == 0 and day in [weekdays.Wednesday.value]:
                      schedule[week,day,1] = self.david
-        
+
         #fill the weekends
         schedule = self.fillWeekends(schedule)
+
         return schedule
+
+    #output a CSV of template
+    #CSV reader and writer not fully implemented
+    def export_schedule_to_csv(self, schedule: np.ndarray):
+        """
+        Writes out a CSV with columns: week,day,slot,employee_name
+        schedule.shape == (weeks, 7, 3)
+        """
+        weeks, days, slots = schedule.shape
+        with open(PATHOUT, 'w', newline='') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(['week','day','slot','employee'])
+            for w in range(weeks):
+                for d in range(days):
+                    for s in range(slots):
+                        emp = schedule[w, d, s]
+                        name = emp.name if emp is not None else ''
+                        writer.writerow([w, d, s, name])
+
+    #not fully implemented
+    def import_schedule_from_csv(self) -> np.ndarray:
+        
+        df = pd.read_csv(PATHIN, header=None)
+
+        daypool = [e for e in self.day_pool if e.name != "David"]
+
+        employeeMap = {
+            0: self.unfilled,
+            1: self.night_pool[0],
+            2: self.night_pool[1],
+            3: self.float_pool[0],
+            4: self.float_pool[1],
+            5: daypool[0],
+            6: daypool[1],
+            7: self.david
+        }
+
+        num_weeks = df.shape[0] // NUM_SHIFTS
+        num_days = df.shape[1]  
+        schedule = []
+
+        for week in range(num_weeks):
+            week_schedule = []
+            start_row = week * NUM_SHIFTS
+            
+            for day in range(DAYS_PER_WEEK):
+                day_shift = []
+                
+                for shift in range(NUM_SHIFTS):
+                    value = df.iloc[start_row + shift, day]
+                    if pd.isna(value):
+                        day_shift.append(self.unfilled)
+                    else:
+                        day_shift.append(employeeMap.get(int(value), None))
+                week_schedule.append(day_shift)
+            
+            schedule.append(week_schedule)
+        schedule = np.array(schedule)
+
+        return schedule
+
+#graph of score over time
+def createFigure(epochs, scores):
+    figure, axis = pp.subplots()
+    axis.plot(epochs, scores)
+    pp.xlabel("Epochs")
+    pp.ylabel("Score")
+    pp.show()
 
 #feasibility check to quick fail an unsolvable problem
 def isFeasible(employees, total_weeks=WEEKS):
@@ -162,56 +242,6 @@ def isFeasible(employees, total_weeks=WEEKS):
     else:
         print("✅ Staff-hour capacity seems sufficient.")
         return True
-
-#output a CSV of template
-#CSV reader and writer not fully implemented
-def export_schedule_to_csv(schedule: np.ndarray, path: str):
-    """
-    Writes out a CSV with columns: week,day,slot,employee_name
-    schedule.shape == (weeks, 7, 3)
-    """
-    weeks, days, slots = schedule.shape
-    with open(path, 'w', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(['week','day','slot','employee'])
-        for w in range(weeks):
-            for d in range(days):
-                for s in range(slots):
-                    emp = schedule[w, d, s]
-                    name = emp.name if emp is not None else ''
-                    writer.writerow([w, d, s, name])
-
-#not fully implemented
-def import_schedule_from_csv(path: str, weeks: int, days: int=7, slots: int=3) -> np.ndarray:
-    """
-    Reads the CSV back into a numpy array of shape (weeks, days, slots).
-    Relies on staffRoster to map names back to Employee instances.
-    """
-    # build lookup from name → Employee
-    name_to_emp = {member.value.name: member.value for member in staffRoster}
-    # an extra entry for blanks or unknowns
-    unfilled = staffRoster.UNFILLED.value
-    schedule = np.empty((weeks, days, slots), dtype=object)
-
-    with open(path, newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            w = int(row['week'])
-            d = int(row['day'])
-            s = int(row['slot'])
-            emp_name = row['employee']
-            schedule[w, d, s] = name_to_emp.get(emp_name, unfilled)
-
-    return schedule
-
-#graph of score over time
-def createFigure(epochs, scores):
-    figure, axis = pp.subplots()
-    axis.plot(epochs, scores)
-    pp.xlabel("Epochs")
-    pp.ylabel("Score")
-    pp.show()
-
 # Main execution block
 if __name__ == "__main__":
     # ---------------------------------- INITIALIZATIONS -------------------------------------------
@@ -222,7 +252,7 @@ if __name__ == "__main__":
     floatpool = templater.float_pool
     unfilled = templater.unfilled
 
-    initial_schedule = templater.makeTemplate(WEEKS)
+    initial_schedule = templater.makeTemplate(WEEKS, fill=True)
     
     # Initialize ScheduleBalancer with the initial schedule
     schedule_balancer = ScheduleBalancer(initial_schedule, daypool, nightpool, floatpool, unfilled) 
@@ -230,7 +260,7 @@ if __name__ == "__main__":
     # ---------------------------------- SOLVING FUNCTIONS -------------------------------------------
     agent = Solver(schedule_balancer, daypool, nightpool, floatpool, unfilled)
 
-    if not isFeasible(employees, total_weeks=WEEKS):
+    if not isFeasible(employees):
         exit(0)
 
     schedule, final_score, epochs, scores = agent.greedySearch()
@@ -251,7 +281,7 @@ if __name__ == "__main__":
     print(f"Final Score: {final_score}")
 
     #print, graph, export to csv  
-    export_schedule_to_csv(schedule, PATHOUT)
+    templater.export_schedule_to_csv(schedule)
 
     #hours count per employee per week
     weeks, days, slots = schedule.shape

@@ -10,10 +10,11 @@ from helpers import (
 import math
 
 ABS_PENALTY = 10000
-EPOCH_LIMIT = 10000
+EPOCH_LIMIT = 1000
 SHIFTLENGTH = 12  # hours
-TEMPERATURE = 10000
+TEMPERATURE = 100
 COOLING = 0.9995
+PATIENCE = 300
 
 class Solver:
     def __init__(self, balancer: ScheduleBalancer, daypool: list[Employee],
@@ -252,18 +253,31 @@ class Solver:
                         if not c.isSatisfied(self.state, w, d, s):
                             violations.append((w,d,s))
                             break
-        if len(violations) < 2:
+        if len(violations) == 1:
+            w,d,s = violations[0]
+            trial_state, trial_hours = self.state.copy(), self.hours_used.copy()
+            cand = self._select_employee_for_slot(trial_state, w, d, s, trial_hours)
+            if cand is not self.unfilled:
+                trial_state[w,d,s] = cand
+                return trial_state, trial_hours
+        if len(violations) <= 0:
             return None, None
 
-        # pick two random distinct violating slots
-        (w1,d1,s1), (w2,d2,s2) = random.sample(violations, 2)
-        trial_state = self.state.copy()
-        trial_hours = self.hours_used.copy()
-        emp1, emp2 = trial_state[w1,d1,s1], trial_state[w2,d2,s2]
-        # swap them
-        trial_state[w1,d1,s1], trial_state[w2,d2,s2] = emp2, emp1
-        # update hours_map if needed...
-        return trial_state, trial_hours
+        for i in range(len(violations)):
+            # pick two random distinct violating slots
+            (w1,d1,s1), (w2,d2,s2) = random.sample(violations, 2)
+            trial_state = self.state.copy()
+            trial_hours = self.hours_used.copy()
+            emp1, emp2 = trial_state[w1,d1,s1], trial_state[w2,d2,s2]
+            # swap them
+            trial_state[w1,d1,s1], trial_state[w2,d2,s2] = emp2, emp1
+            currGABS, _, currSABS, _, _ = self.balancer.numViolations(self.state)
+            trialGABS, _, trialSABS, _, _ = self.balancer.numViolations(trial_state)
+            if trialGABS > currGABS or trialSABS > currSABS:
+                continue
+            else:
+                return trial_state, trial_hours
+        return None, None
 
     # score constraint violations and unfilled shifts +1 for each relative violation and +5 for each unfilled shift, + ABS_PENALTY for absolute violations
     def score(self, schedule):
@@ -303,11 +317,22 @@ class Solver:
         best_state = self.state.copy()
         best_score = self.current_score
         history_epochs, history_scores = [], []
-        epoch = tolerance = acceptCounter = 0
+        epoch = patience = acceptCounter = 0
+
+        print(f"Starting Score: {best_score}")
+        # print(self.balancer)
+        # self.balancer.printViolations()
+        # exit()
 
         while epoch < EPOCH_LIMIT and best_score > 0:
+            if patience > PATIENCE:
+                print("Impatient Restart")
+                self.state, self.current_score, self.hours_used = best_state, best_score, best_hours
+                self.lastRejected = None
+                self.temperature = TEMPERATURE
             epoch += 1
-            #print(f"Epoch {epoch}, current score: {self.current_score}, heat: {self.temperature}")
+            if epoch % 100 == 0:
+                print(f"Epoch {epoch}, current score: {self.current_score}, best score: {best_score}, heat: {self.temperature:.2f}")
 
             # propose move into slot
             new_state, h_map = self.propose_move()
@@ -321,9 +346,11 @@ class Solver:
                 self.state, self.hours_used, self.current_score = new_state, h_map, new_score
                 self.lastRejected = None
                 acceptCounter += 1
-            # else:
-            #     print("Reject")
-
+                patience = 0
+            else:
+            #   print("Reject")
+                patience += 1
+ 
             if self.current_score < best_score:
                 best_state, best_score = self.state.copy(), self.current_score
                 best_hours = self.hours_used
@@ -343,12 +370,25 @@ class Solver:
         #self.balancer.printViolations()
         print(f"Score: {self.current_score}")
 
+        #save the current greedy state, restore later if post-processing results in worse score
+        greedy_state, greedy_score = self.state.copy(), self.current_score
+        
+
         print("-----------------Greedy Phase Complete--------------")
 
         # repair phase
         self.state, history_epochs, history_scores, violations = self.repair_schedule(history_epochs, history_scores)
-
         self.current_score = self.score(self.state)
+        history_epochs.append(len(history_epochs)+1)
+        history_scores.append(self.current_score)
+
+        # if repair’s relative‐only score is worse than greedy, roll back:
+        if self.score(self.state) > greedy_score:
+            print("Repair worsened relative cost—rolling back to greedy solution")
+            self.state, self.current_score = greedy_state, greedy_score
+            history_epochs.append(len(history_epochs)+1)
+            history_scores.append(self.current_score)
+
         self.balancer.state = self.state
 
         # print post-repair

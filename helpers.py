@@ -89,8 +89,8 @@ class Constraint:
             if week % 2 == 0:
                 return True  # Skip duplicate checks
 
-            start = week
-            end = min(week + 2, W)
+            start = week-1
+            end = week+1
             total = 0
             for w in range(start, end):
                 for d in range(D):
@@ -189,7 +189,7 @@ class Constraint:
             if slot in (0, 1):
                 if day > 0 and schedule[week, day - 1, 2] is emp:
                     return False
-                else:  # day == 0
+                elif day == 0:
                     if schedule[week - 1, 6, 2] is emp:
                         return False
             return True
@@ -210,30 +210,31 @@ class Constraint:
                             total += HOURSPERSHIFT
             return total >= self.val
 
+        #not implemented, instead just reward contiguous shifts
         if self.name == validStaffConstraint.MIN_REST.value:
-            #already works today
-            if slot == 0:
-                if schedule[week, day, 1] is emp or schedule[week, day, 2] is emp:
-                    return False
-            if slot == 1:
-                if schedule[week, day, 0] is emp or schedule[week, day, 2] is emp:
-                    return False
-            if slot == 2:
-                if schedule[week, day, 1] is emp or schedule[week, day, 0] is emp:
-                    return False
+            # #already works today
+            # if slot == 0:
+            #     if schedule[week, day, 1] is emp or schedule[week, day, 2] is emp:
+            #         return False
+            # if slot == 1:
+            #     if schedule[week, day, 0] is emp or schedule[week, day, 2] is emp:
+            #         return False
+            # if slot == 2:
+            #     if schedule[week, day, 1] is emp or schedule[week, day, 0] is emp:
+            #         return False
                 
              # first day always true
-            if week == 0 and day == 0:
-                return True
+            # if week == 0 and day == 0:
+            #     return True
             
-            #at least 2 days rest between start and end of stretch
-            if day > 1 and emp not in schedule[week, day - 1, :]:
-                if emp in schedule[week, day - 2, :]:
-                    return False
-            else:  # day <= 1
-                if emp not in schedule[week - 1, 6, :]:
-                    if emp in schedule[week - 1, 5, :]:
-                        return False
+            # #at least 2 days rest between start and end of stretch
+            # if day > 1 and emp not in schedule[week, day - 1, :]:
+            #     if emp in schedule[week, day - 2, :]:
+            #         return False
+            # elif day == 1:  # day <= 1
+            #     if emp not in schedule[week, 0, :]:
+            #         if emp in schedule[week - 1, 6, :]:
+            #             return False
                     
             return True
         
