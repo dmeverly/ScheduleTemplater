@@ -404,8 +404,6 @@ Ashley:
 
 ![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png) 
 
-![Final Template](template.xlsx)
-
 [📄 View Final Template (Google Sheets)](https://docs.google.com/spreadsheets/d/1pQ2ikx7xCO3GEW18450oJszRIT6FUK3cu3nQw0aWBz8/edit?usp=sharing)
 
 
