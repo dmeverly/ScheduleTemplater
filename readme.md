@@ -25,6 +25,7 @@ Greedy search offers a faster alternative by selecting the best local option at 
 - [Examples](#examples)
 - [Results and Conclusion](#results-and-conclusion)
 - [Future Work and Extension](#future-work-and-extension)
+- [References](#references)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -43,11 +44,14 @@ pip install -r requirements.txt
 # Usage
 Program is intended to be run using Unix-like terminal such as Linux, macOS Terminal (untested), or MINGW64 (Git Bash) on Windows.  
 
-Run the script with:  
+Run the script with: 
+```bash 
 python templater.py 
-  
+```  
 Or use the provided shell script:    
+```bash
 ./run  
+```
 
 # Features  
 - Multi-week template generation  
@@ -72,6 +76,7 @@ Final Sweep   -> 0
 
 <details>
 <summary>Expand Command Line Output</summary>
+```text
 $ ./run
 Total required shifts over 6 weeks: 99 (Total Hours: 1188)
 Total available hours from staff: 1560.0
@@ -394,9 +399,10 @@ Ashley:
   Weeks 0-1: 72 hrs
   Weeks 2-3: 72 hrs
   Weeks 4-5: 72 hrs
+```
 </details>  
 
-![Score by Epoch chart showing improvement over training](Results/score_by_epoch.png)  
+![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png)  
 
 # Results and Conclusion
 The model reliably generates schedule templates that satisfy both global and employee-level constraints in most runs. This significantly reduces the effort compared to manual schedule creation. Any dissatisfaction with the output can typically be resolved by encoding additional constraints or adjusting the scoring logic accordingly.
@@ -406,4 +412,10 @@ This solution addresses one half of the sponsor’s problem—template creation.
 
 # References  
 
-No external sources were used. However, LLM queries assisted with architectural design and debugging.
+No external sources were used. However, LLM queries assisted with architectural design and debugging.  
+
+# Contibuting  
+No external parties contibuted to this project.  
+
+# Licenses  
+No licenses apply to this project.
