@@ -1,5 +1,4 @@
 import numpy as np
-import random
 
 from Solver import Solver
 from helpers import (
@@ -8,18 +7,22 @@ from helpers import (
     ScheduleBalancer,
     validStaffConstraint
 )
-import csv
 import matplotlib.pyplot as pp
 import pandas as pd
 from openpyxl.utils import get_column_letter
+import pandas as pd
+from openpyxl import load_workbook
 
-PATHIN = "startingTemplate.csv"
+PATHIN = 'template.xlsx'
 PATHOUT = 'template.xlsx'
-WEEKS = 4
+STARTERPATHIN = 'startingTemplate.csv'
+WEEKS = 6 # if reading from xlsx this needs to be exactly the same number of weeks as weeks to be copied from xlsx
 SHIFTLENGTH = 12 #hours
 NUM_SHIFTS = 3  # D1, D2, N
 DAYS_PER_WEEK = 7
 
+# class with functions to initialize a blank or partially-filled schedule, assign weekends by rotation, import and export schedule templates
+# employees are created with constraints from helpers.py, sorted into pools based on day-night shift preference
 class Templater:
     def __init__(self):
         self.employees = self._create_employees()
@@ -96,7 +99,7 @@ class Templater:
                         exit(1)
                         schedule[w,d,2] = self.unfilled
 
-                    schedule[w,d,1] = self.unfilled # D2 is UNFILLED
+                    schedule[w,d,1] = self.unfilled 
 
                     if w % 2 == 0: # Even week: David + one other for day shifts
                         schedule[w,d,0] = self.david # David is D1
@@ -150,30 +153,53 @@ class Templater:
 
         return schedule
 
-    #output a CSV of template
-    #CSV reader and writer not fully implemented
-    # def export_schedule_to_csv(self, schedule: np.ndarray):
-    #     """
-    #     Writes out a CSV with columns: week,day,slot,employee_name
-    #     schedule.shape == (weeks, 7, 3)
-    #     """
-    #     weeks, days, slots = schedule.shape
-    #     with open(PATHOUT, 'w', newline='') as csvfile:
-    #         writer = csv.writer(csvfile)
-    #         writer.writerow(['week','day','slot','employee'])
-    #         for w in range(weeks):
-    #             for d in range(days):
-    #                 for s in range(slots):
-    #                     emp = schedule[w, d, s]
-    #                     name = emp.name if emp is not None else ''
-    #                     writer.writerow([w, d, s, name])
+    # import schedule from .xlsx on PATHIN
+    # return state as numpy array
+    # assumes the format of cells is exactly the same as the export function
+    def import_schedule_from_xlsx(self) -> np.ndarray:
+        W, D, S = WEEKS, 7, 3
+        schedule = np.empty((W, D, S), dtype=object)
+        name_map = {e.name: e for e in self.employees}
+        name_map[''] = self.unfilled 
 
+        wb = load_workbook(PATHIN, data_only=True)
+        ws = wb['Master']
+
+        shift_blocks = {}
+        for row in ws.iter_rows(min_row=1, max_col=1):
+            cell = row[0]
+            if cell.value in ('Day 1 Shifts', 'Day 2 Shifts', 'Night Shifts'):
+                label = cell.value.split()[0] 
+                if label == 'Day': 
+                    full = cell.value 
+                    shift_blocks[full.split()[1]] = cell.row  
+                else:
+                    shift_blocks['N'] = cell.row 
+
+        for shift_idx, key in enumerate(('1','2','N')):
+            start = shift_blocks[key]
+            # header_row = start + 1
+            data_start = start + 2
+
+            # headers = [ws.cell(row=header_row, column=col).value
+            #            for col in range(1, D+2)]
+
+            for w in range(W):
+                row_idx = data_start + w
+                for d in range(D):
+                    cell = ws.cell(row=row_idx, column=d+2)
+                    name = cell.value if cell.value is not None else ''
+                    emp = name_map.get(name, self.unfilled)
+                    schedule[w, d, shift_idx] = emp
+
+        return schedule
+
+    # export schedule from state to PATHOUT
     def export_schedule_to_xlsx(self, schedule: np.ndarray):
-        W, D, S = schedule.shape
+        W, _, _ = schedule.shape
         SHIFT_HOURS = 12
         day_names = ['Mo','Tu','We','Th','Fr','Sa','Su']
 
-        # 1) Build D1, D2, N tables
         tables = {}
         for idx, label in enumerate(('D1','D2','N')):
             data = []
@@ -188,7 +214,6 @@ class Templater:
 
             tables[label] = pd.DataFrame(data, columns=day_names).assign(Week=lambda df: df.index + 1).set_index('Week')
 
-        # 2) Build the summary DataFrame
         all_emps = {e for e in schedule.flatten() if e.name!='UNFILLED'}
         summary_rows = []
         for emp in sorted(all_emps, key=lambda e: e.name):
@@ -224,7 +249,6 @@ class Templater:
             ]
         )
 
-        # 3) Build per-employee sheets
         personal_dfs = {}
         for emp in sorted(all_emps, key=lambda e: e.name):
             rows = []
@@ -245,59 +269,40 @@ class Templater:
                 columns=['Week'] + day_names + ['Hours']
             )
 
-        # 4) Write everything to Excel
         with pd.ExcelWriter(PATHOUT, engine='openpyxl') as writer:
             ws = None
-
-            # 4a) Master sheet: three tables stacked
             shift_labels = [('D1', 'Day 1'), ('D2', 'Day 2'), ('N', 'Night')]
 
             
             current_row_offset = 0
             for i, (key, label) in enumerate(shift_labels):
-                # Calculate the starting row for each table.
-                # Add 2 for initial spacing, then (W+5) for each table block
-                # (W rows + header + index + spacing)
                 start_row = current_row_offset + 2
                 df = tables[key]
 
-                # Write the DataFrame to the 'Master' sheet
                 df.to_excel(
                     writer,
                     sheet_name='Master',
                     startrow=start_row,
                     startcol=0,
-                    index=True,  # Write the 'Week' index as a column
-                    header=True  # Write the column headers
+                    index=True,  
+                    header=True  
                 )
 
-                # Get the worksheet object after the first write to avoid errors
                 if ws is None:
                     ws = writer.book['Master']
 
-                # Add a descriptive heading above each shift table
-                # This heading should be merged across columns
                 ws.cell(row=start_row, column=1).value = f"{label} Shifts"
                 ws.merge_cells(
                     start_row=start_row,
                     start_column=1,
                     end_row=start_row,
-                    end_column=1 + len(day_names) + 1  # 1 for 'Week' column, 1 for extra cell for aesthetics
+                    end_column=1 + len(day_names) + 1  
                 )
 
-                # Adjust column headers explicitly if needed, but pd.to_excel usually handles this.
-                # The user's original code sets them again; ensure no duplication or overwrite issues.
-                # The 'Week' column header is handled by `index=True` in to_excel.
-                # 'day_names' are handled by `header=True`.
+                current_row_offset = start_row + len(df) + 3 
 
-                # Update the row offset for the next table
-                current_row_offset = start_row + len(df) + 3 # Add rows of df + header + index + 2 for spacing
+            summary_start_row = current_row_offset + 2 
 
-            # 4b) Summary heading + table below the last N table
-            summary_start_row = current_row_offset + 2 # Add some space after the last shift table
-
-            # Merge "Summary" across columns A-F (or as many columns as the summary_df has)
-            # The summary_df has 6 columns
             ws.merge_cells(
                 start_row=summary_start_row,
                 start_column=1,
@@ -306,43 +311,43 @@ class Templater:
             )
             ws.cell(row=summary_start_row, column=1).value = "Summary"
 
-            # Write the summary DataFrame
             summary_df.to_excel(
                 writer,
                 sheet_name='Master',
-                startrow=summary_start_row + 1,  # Start after the 'Summary' heading
+                startrow=summary_start_row + 1,  
                 startcol=0,
-                index=False, # Do not write DataFrame index
-                header=True  # Write column headers
+                index=False, 
+                header=True  
             )
 
-            # 4c) Write each personal sheet
             for name, df in personal_dfs.items():
-                # Ensure sheet name is <= 31 characters, which is an Excel limit
                 df.to_excel(writer, sheet_name=name[:31], index=False)
 
-            # 5) Auto-size all columns on the 'Master' sheet for better readability
-            if ws: # Ensure ws exists before trying to iterate
+            if ws: 
                 for column_cells in ws.columns:
                     max_length = 0
-                    column = column_cells[0].column # Get the column number
+                    column = column_cells[0].column 
                     for cell in column_cells:
                         try:
-                            # Calculate length based on cell value, handling None
                             if cell.value is not None:
                                 max_length = max(max_length, len(str(cell.value)))
                         except Exception:
-                            pass # Ignore errors for cells that might not have a simple string representation
-                    adjusted_width = (max_length + 2) # Add a small buffer
+                            pass 
+                    adjusted_width = (max_length + 2) 
                     ws.column_dimensions[get_column_letter(column)].width = adjusted_width
 
-
+    #this method used specifically for importing a rough sketch of the template, which contained integers to represent employees
+    #integer representation compared to employeeMap, which was coded with known length of each employee pool
+    #if needed in the future, carefully inspect the length in each pool and extend the employee map as needed
+    #read from STARTERPATHIN
+    #return state as numpy array
     def import_schedule_from_csv(self) -> np.ndarray:
         
-        df = pd.read_csv(PATHIN, header=None)
+        df = pd.read_csv(STARTERPATHIN, header=None)
 
         daypool = [e for e in self.day_pool if e.name != "David"]
 
+        #this is hard coded map representation, change as needed for future implementation
         employeeMap = {
             0: self.unfilled,
             1: self.night_pool[0],
@@ -355,7 +360,7 @@ class Templater:
         }
 
         num_weeks = df.shape[0] // NUM_SHIFTS
-        num_days = df.shape[1]  
+        # num_days = df.shape[1]  
         schedule = []
 
         for week in range(num_weeks):
@@ -380,7 +385,7 @@ class Templater:
 
 #graph of score over time
 def createFigure(epochs, scores):
-    figure, axis = pp.subplots()
+    _, axis = pp.subplots()
     axis.plot(epochs, scores)
     pp.xlabel("Epochs")
     pp.ylabel("Score")
@@ -411,16 +416,18 @@ def isFeasible(employees, total_weeks=WEEKS):
     else:
         print("✅ Staff-hour capacity seems sufficient.")
         return True
+    
 # Main execution block
 if __name__ == "__main__":
     # ---------------------------------- INITIALIZATIONS -------------------------------------------
-    templater = Templater()
+    templater = Templater()    
     employees = templater.employees
     daypool = templater.day_pool
     nightpool = templater.night_pool
     floatpool = templater.float_pool
     unfilled = templater.unfilled
 
+    #create initial template using startingTemplate.csv
     initial_schedule = templater.makeTemplate(WEEKS, fill=True)
     
     # Initialize ScheduleBalancer with the initial schedule
@@ -432,7 +439,7 @@ if __name__ == "__main__":
     if not isFeasible(employees):
         exit(0)
 
-    schedule, final_score, epochs, scores = agent.greedySearch()
+    schedule, final_score, epochs, scores = agent.stateHandler()
     
     # ---------------------------------- EVAL AND PRINTING FUNCTIONS -------------------------------------------
 

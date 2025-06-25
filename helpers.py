@@ -30,7 +30,6 @@ class validStaffConstraint(Enum):
     CAN_WORK_SATURDAY = 'Can Work Saturday'
     CAN_WORK_SUNDAY = 'Can Work Sunday'
     NO_DAY_AFTER_NIGHT = 'No Day After Night'
-    MIN_REST = 'Min Rest' 
     MINIMUM_HOURS = 'Minimum Hours'
     ONE_PER_DAY = "One Shift Per Day"
 
@@ -39,6 +38,7 @@ class validGlobalConstraint(Enum):
     D2_SHIFTS_FILLED = 'Dayshifts 2 Filled'
     NIGHT_SHIFTS_FILLED = 'Nightshifts Filled'
 
+#contraint class defines constraints and contains methods for adding, removing, and checking constraint satisfaction in the current state
 class Constraint:
     def __init__(self, name: str, val: float, ctype: constraintType):
         self.name = name
@@ -87,7 +87,7 @@ class Constraint:
         # HOURS_PER_PAY_PERIOD
         if self.name == validStaffConstraint.HOURS_PER_PAY_PERIOD.value:
             if week % 2 == 0:
-                return True  # Skip duplicate checks
+                return True  # only check at end of pay period
 
             start = week-1
             end = week+1
@@ -142,7 +142,6 @@ class Constraint:
             # Collect all pay-period weeks where emp worked at least one weekend day
             worked_weekends = []
             for w in range(W):
-                # did they work Sat or Sun in week w?
                 if any(
                     schedule[w, d, s] is emp
                     for d in (weekdays.Saturday.value, weekdays.Sunday.value)
@@ -151,9 +150,8 @@ class Constraint:
                     worked_weekends.append(w)
 
             if not worked_weekends:
-                return True  # never worked a weekend, trivially satisfied
+                return True  
 
-            # Now scan for longest streak of consecutive entries
             max_run = curr_run = 1
             prev_week = worked_weekends[0]
             for w in worked_weekends[1:]:
@@ -182,26 +180,30 @@ class Constraint:
                     curr = 0
             return max_run <= self.val
 
-        # NO_DAY_AFTER_NIGHT
+        # No day shifts for next 2 days after working night shift
         if self.name == validStaffConstraint.NO_DAY_AFTER_NIGHT.value:
             if week == 0 and day == 0:
                 return True
             if slot in (0, 1):
-                if day > 0 and schedule[week, day - 1, 2] is emp:
-                    return False
-                elif day == 0:
-                    if schedule[week - 1, 6, 2] is emp:
+                if day > 1:
+                    if schedule[week, day - 1, 2] is emp or schedule[week, day-2, 2] is emp:
                         return False
+                elif day == 1:
+                    if schedule[week, day - 1, 2] is emp or schedule[week-1, 6, 2] is emp:
+                        return False
+                elif day == 0:
+                    if schedule[week-1, 6, 2] is emp or schedule[week-1,5,2] is emp:
+                        return False
+                    
             return True
 
         # MINIMUM_HOURS
         if self.name == validStaffConstraint.MINIMUM_HOURS.value:
-            # Only check once per pay period
             if week % 2 == 0:
-                return True  # Avoid checking twice for the same pay period
+                return True  # Only check at end of pay period
 
             start = week - 1
-            end = min(week + 2, W)  # In case final week is odd
+            end = min(week + 2, W)  
             total = 0
             for w in range(start, end):
                 for d in range(D):
@@ -209,39 +211,12 @@ class Constraint:
                         if schedule[w, d, s] is emp:
                             total += HOURSPERSHIFT
             return total >= self.val
-
-        #not implemented, instead just reward contiguous shifts
-        if self.name == validStaffConstraint.MIN_REST.value:
-            # #already works today
-            # if slot == 0:
-            #     if schedule[week, day, 1] is emp or schedule[week, day, 2] is emp:
-            #         return False
-            # if slot == 1:
-            #     if schedule[week, day, 0] is emp or schedule[week, day, 2] is emp:
-            #         return False
-            # if slot == 2:
-            #     if schedule[week, day, 1] is emp or schedule[week, day, 0] is emp:
-            #         return False
-                
-             # first day always true
-            # if week == 0 and day == 0:
-            #     return True
-            
-            # #at least 2 days rest between start and end of stretch
-            # if day > 1 and emp not in schedule[week, day - 1, :]:
-            #     if emp in schedule[week, day - 2, :]:
-            #         return False
-            # elif day == 1:  # day <= 1
-            #     if emp not in schedule[week, 0, :]:
-            #         if emp in schedule[week - 1, 6, :]:
-            #             return False
-                    
-            return True
         
         # Unknown constraint
         print(f"unhandled constraint {self.name}")
         return True
 
+# class to represent employee with constraints to represent employee preferences
 class Employee:
     def __init__(self, name: str, FTE: float):
         self.name = name
@@ -278,12 +253,11 @@ class Employee:
             return
 
         self.addConstraint(validStaffConstraint.HOURS_PER_PAY_PERIOD, 80 * self.FTE, constraintType.ABSOLUTE)
-        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
-        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.WEEKEND_ROTATION, 1, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.NO_DAY_AFTER_NIGHT, True, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.CONSECUTIVE_DAYS, 3, constraintType.RELATIVE)
-        self.addConstraint(validStaffConstraint.MIN_REST, True, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.MINIMUM_HOURS, 80 * self.FTE * 0.8, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.ONE_PER_DAY, True, constraintType.ABSOLUTE)
 
@@ -334,6 +308,7 @@ class staffRoster(Enum):
     Megan = Employee('Megan', 1)
     Ashley = Employee('Ashley', 1)
 
+# class contains methods to set and monitor global constraints, print the current state, and find/print/return current state constraint violations
 class ScheduleBalancer:
     def __init__(self, state: np.ndarray, daypool: list[Employee],nightpool: list[Employee], floatpool: list[Employee], unfilled: list[Employee]):
         self.state = state
