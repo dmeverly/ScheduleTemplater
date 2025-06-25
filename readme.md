@@ -402,7 +402,9 @@ Ashley:
   ```
 </details> ```  
 
-![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png)  
+![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png) 
+
+![Final Template](template.xlsx)
 
 # Results and Conclusion
 The model reliably generates schedule templates that satisfy both global and employee-level constraints in most runs. This significantly reduces the effort compared to manual schedule creation. Any dissatisfaction with the output can typically be resolved by encoding additional constraints or adjusting the scoring logic accordingly.
