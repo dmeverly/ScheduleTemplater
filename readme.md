@@ -76,7 +76,7 @@ Final Sweep   -> 0
 <details>
 <summary>Expand Command Line Output</summary>
 
-```text
+```text  
 $ ./run
 Total required shifts over 6 weeks: 99 (Total Hours: 1188)
 Total available hours from staff: 1560.0
@@ -399,8 +399,9 @@ Ashley:
   Weeks 0-1: 72 hrs
   Weeks 2-3: 72 hrs
   Weeks 4-5: 72 hrs
-</details> ```
-```
+  ```
+</details> ```  
+
 ![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png)  
 
 # Results and Conclusion
