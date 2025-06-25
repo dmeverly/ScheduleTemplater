@@ -27,7 +27,6 @@ Greedy search offers a faster alternative by selecting the best local option at 
 - [Future Work and Extension](#future-work-and-extension)
 - [References](#references)
 - [Contributing](#contributing)
-- [License](#license)
 
 # Installation
 Dependencies:   
@@ -412,8 +411,5 @@ This solution addresses one half of the sponsor’s problem—template creation.
 
 No external sources were used. However, LLM queries assisted with architectural design and debugging.  
 
-# Contibuting  
+# Contributing  
 No external parties contibuted to this project.  
-
-# Licenses  
-No licenses apply to this project.
