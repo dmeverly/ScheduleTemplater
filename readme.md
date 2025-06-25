@@ -400,7 +400,7 @@ Ashley:
   Weeks 2-3: 72 hrs
   Weeks 4-5: 72 hrs
 </details> ```
-
+```
 ![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png)  
 
 # Results and Conclusion
