@@ -406,6 +406,9 @@ Ashley:
 
 ![Final Template](template.xlsx)
 
+[📄 View Final Template (Google Sheets)](https://docs.google.com/spreadsheets/d/1pQ2ikx7xCO3GEW18450oJszRIT6FUK3cu3nQw0aWBz8/edit?usp=sharing)
+
+
 # Results and Conclusion
 The model reliably generates schedule templates that satisfy both global and employee-level constraints in most runs. This significantly reduces the effort compared to manual schedule creation. Any dissatisfaction with the output can typically be resolved by encoding additional constraints or adjusting the scoring logic accordingly.
 
