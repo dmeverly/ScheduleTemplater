@@ -6,7 +6,7 @@
 
 ---
 
-## Problem Statement  
+# Problem Statement  
 The project sponsor described issues with the existing scheduling workflow, which involved manually creating a schedule template and mapping it onto an annual calendar. Conflicting employee and business constraints resulted in excessive meetings and constant revisions. I was asked to automate both the creation of the template and its mapping to the calendar. 
   
 # Description  
