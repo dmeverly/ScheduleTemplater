@@ -488,7 +488,11 @@ Ashley:
 
 
 # Results and Conclusion
-The model reliably generates schedule templates that satisfy both global and employee-level constraints in most runs. This significantly reduces the effort compared to manual schedule creation. Any dissatisfaction with the output can typically be resolved by encoding additional constraints or adjusting the scoring logic accordingly.
+Because of the stochastic nature of greedy+SA, each run varies. However, nearly all runs met **all absolute** constraints and minimized **relative** violations (typically 0–20). Analysis showed most remaining violations were “minimum rest” (time between shifts) issues—removing that constraint yielded 0 total violations.  
+
+- **Greedy + SA + local repair** reliably produces schedules satisfying all absolute and most relative constraints.  
+- No fully constraint-free solution was possible without staffing extra hours on “underserved” days—indicating the organization has more staffing capacity than demand.  
+- The automation reduces manual effort dramatically compared to hand-crafting templates.  
 
 # Future Work and Extension  
 This solution addresses one half of the sponsor’s problem—template creation. The other half involved mapping the template to an annual calendar. I have already created a separate solution for that task (see the "Scheduler" on GitHub). A natural next step would be to integrate both tools into a unified workflow.
