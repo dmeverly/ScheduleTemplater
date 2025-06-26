@@ -12,7 +12,7 @@ import math
 ABS_PENALTY = 10000
 EPOCH_LIMIT = 1000
 SHIFTLENGTH = 12  # hours
-TEMPERATURE = 100
+TEMPERATURE = 1000
 COOLING = 0.9995
 PATIENCE = 300
 
@@ -96,7 +96,7 @@ class Solver:
             schedule[w, d, s] = original_emp
             delta = trial_score - self.current_score
             softCost = self._soft_cost_eval(schedule, w, d, s, emp)
-            combined = delta*100 + softCost   # weight Δscore heavily, plus a small soft cost
+            combined = delta + softCost  
             
             if combined < best_combined:
                 best_candidate = emp
@@ -147,7 +147,7 @@ class Solver:
                 total_run = prev_run + 1 + next_run
 
                 if total_run <= max_consec:
-                    cost -= 3  # bonus = -3 for runs
+                    cost -= 3000  # bonus = -3000 for runs
 
         schedule[w, d, s] = orig
         return cost
@@ -275,7 +275,7 @@ class Solver:
                 return trial_state, trial_hours
         return None, None
 
-    # score constraint violations and unfilled shifts +1 for each relative violation and +5 for each unfilled shift, + ABS_PENALTY for absolute violations
+    # score constraint violations and unfilled shifts +1 for each relative violation and +50 for each unfilled shift, + ABS_PENALTY for absolute violations
     def score(self, schedule):
         g_abs, g_rel, s_abs, s_rel, _ = self.balancer.numViolations(schedule=schedule)
         W, _, _ = schedule.shape
@@ -287,7 +287,7 @@ class Solver:
                     if downstaff and s == 1:
                         continue
                     if schedule[w, d, s].name == "UNFILLED":
-                        g_abs += 5
+                        g_abs += 50
         return (g_abs + s_abs) * ABS_PENALTY + g_rel + s_rel
 
     # SA decision to accept proposal, always accept better scoring states, randomly accept worse states
@@ -311,69 +311,75 @@ class Solver:
     # final sweep to check for violations
     # every step checks pre- and post- score, if worse, revert back to previous state before proceeding
     def stateHandler(self):
-        #start of greedy search
+        def snapshot():
+            return (self.state.copy(),
+                    self.current_score,
+                    {w: h.copy() for w, h in self.hours_used.items()})
+
+        def restore(snap):
+            st, sc, hrs = snap
+            self.state = st.copy()
+            self.current_score = sc
+            self.hours_used = {w: h.copy() for w, h in hrs.items()}
+            self.balancer.state = self.state
+
+        history_epochs, history_scores = [], []
+
+        # 1) Greedy phase
         print(self.balancer)
         print(f"Starting Score: {self.current_score}")
-        print("Starting greedy initialization...")
-        #save results
+        print("Starting greedy initialization…")
+        greedy_snap = snapshot()
         greedy_state, greedy_score, history_epochs, history_scores = self.greedySearch()
+        # after greedySearch, self.state/self.current_score are updated
         print("-----------------Greedy Phase Complete--------------")
         print(f"Greedy best state\n{self.balancer}")
         print(f"Score: {self.current_score}")
-        #start of repair
-        print("Starting post‑Greedy repair...")
-        #save results
+
+        # 2) Repair phase
+        print("Starting post-Greedy repair…")
+        repair_snap = snapshot()
         self.state, history_epochs, history_scores, _ = self.repair_schedule(history_epochs, history_scores)
         self.current_score = self.score(self.state)
-        history_epochs.append(len(history_epochs)+1)
-        history_scores.append(self.current_score)
-        #if worse, revert back
-        if self.score(self.state) > greedy_score:
-            print("Repair worsened relative cost—rolling back to greedy solution")
-            self.state, self.current_score = greedy_state, greedy_score
-            history_epochs.append(len(history_epochs)+1)
-            history_scores.append(self.current_score)
-        self.balancer.state = self.state
-        repair_state, repair_score = self.state, self.current_score
         print(f"After Repair state\n{self.balancer}")
-        print(f"Score: {self.current_score}")       
+        print(f"Score: {self.current_score}")
+        # Roll back if worse than greedy
+        if self.current_score > greedy_score:
+            print("Repair worsened relative cost—rolling back to greedy solution")
+            restore(greedy_snap)
+        repair_snap = snapshot()   # re-snapshot after possible rollback
         print("-----------------Repair Phase Complete--------------")
-        #start of min fill
-        print("Filling Minimums...")
-        #save result
+
+        # 3) Final-fill phase
+        print("Filling Minimums…")
+        fill_snap = snapshot()
         self.state, history_epochs, history_scores = self.finalFillMinimums(history_epochs, history_scores)
         self.current_score = self.score(self.state)
-        history_epochs.append(len(history_epochs)+1)
-        history_scores.append(self.current_score)
-        # if score is worse, roll back:
-        if self.score(self.state) > repair_score:
-            print("Repair worsened relative cost—rolling back to repair solution")
-            self.state, self.current_score = repair_state, repair_score
-            history_epochs.append(len(history_epochs)+1)
-            history_scores.append(self.current_score)
-        self.balancer.state = self.state
-        fill_state, fill_score = self.state, self.current_score
         print(f"After Filling state\n{self.balancer}")
         print(f"Score: {self.current_score}")
+        # Roll back if worse than post-repair
+        if self.current_score > repair_snap[1]:
+            print("Filling worsened relative cost—rolling back to repair solution")
+            restore(repair_snap)
+        fill_snap = snapshot()
         print("-----------------Fill Phase Complete--------------")
-        #start final sweep
-        print("Final Sweep...")
+
+        # 4) Final sweep
+        print("Final Sweep…")
+        sweep_snap = snapshot()
         self.state, history_epochs, history_scores = self.finalPass(history_epochs, history_scores)
         self.current_score = self.score(self.state)
-        history_epochs.append(len(history_epochs)+1)
-        history_scores.append(self.current_score)
-        # if score is worse, roll back:
-        if self.score(self.state) > fill_score:
-            print("Sweep worsened relative cost—rolling back to fill solution")
-            self.state, self.current_score = fill_state, fill_score
-            history_epochs.append(len(history_epochs)+1)
-            history_scores.append(self.current_score)
-        self.balancer.state = self.state
-        self.current_score = self.score(self.state)
-        print("-----------------Template Complete--------------")
+        print(f"After Sweep state\n{self.balancer}")
         print(f"Score: {self.current_score}")
-        #return the best result
+        # Roll back if worse than final-fill
+        if self.current_score > fill_snap[1]:
+            print("Sweep worsened relative cost—rolling back to fill solution")
+            restore(fill_snap)
+
+        print("-----------------Template Complete--------------")
+        print(f"Final Score: {self.current_score}")
         return self.state, self.current_score, history_epochs, history_scores
+
 
     # greedy search with simulated annealing
     def greedySearch(self):     

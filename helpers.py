@@ -32,6 +32,8 @@ class validStaffConstraint(Enum):
     NO_DAY_AFTER_NIGHT = 'No Day After Night'
     MINIMUM_HOURS = 'Minimum Hours'
     ONE_PER_DAY = "One Shift Per Day"
+    MIN_REST = "Minimum Rest"
+    OVERLOADED = "Overloaded Week"
 
 class validGlobalConstraint(Enum):
     D1_SHIFTS_FILLED = 'Dayshifts 1 Filled'
@@ -121,6 +123,14 @@ class Constraint:
                 if schedule[week, d, 2] is emp
             )
             return cnt <= self.val
+        
+        if self.name == validStaffConstraint.OVERLOADED.value:
+            cnt = sum(
+                1
+                for d in range(D)
+                if schedule[week, d, :] is emp
+            )
+            return cnt < self.val
 
         # CAN_WORK_X constraints
         day_map = {
@@ -182,19 +192,22 @@ class Constraint:
 
         # No day shifts for next 2 days after working night shift
         if self.name == validStaffConstraint.NO_DAY_AFTER_NIGHT.value:
-            if week == 0 and day == 0:
+            # only applies to day slots
+            if slot not in (0, 1):
                 return True
-            if slot in (0, 1):
-                if day > 1:
-                    if schedule[week, day - 1, 2] is emp or schedule[week, day-2, 2] is emp:
-                        return False
-                elif day == 1:
-                    if schedule[week, day - 1, 2] is emp or schedule[week-1, 6, 2] is emp:
-                        return False
-                elif day == 0:
-                    if schedule[week-1, 6, 2] is emp or schedule[week-1,5,2] is emp:
-                        return False
-                    
+
+            W, D, S = schedule.shape
+            # check offsets of +1, +2 days
+            for offset in (1, 2):
+                # compute tentative day index and week rollover
+                new_day = day + offset
+                week_delta, neighbour_day = divmod(new_day, D)
+                neighbour_week = (week + week_delta) % W
+
+                # if they did a night shift there, fail
+                if schedule[neighbour_week, neighbour_day, 2] is emp:
+                    return False
+
             return True
 
         # MINIMUM_HOURS
@@ -212,6 +225,23 @@ class Constraint:
                             total += HOURSPERSHIFT
             return total >= self.val
         
+        # MIN_REST: at least self.val days between any two shifts
+        if self.name == validStaffConstraint.MIN_REST.value:
+            # helper to check if emp works at (w,d)
+            def works(w, d):
+                return any(schedule[w % W, d % D, s] is emp for s in range(S))
+
+            # If they work the day before or after, that's consecutive and always allowed
+            if works(week, day - 1) or works(week, day + 1):
+                return True
+
+            # enforce the minimum‐rest window
+            for delta in range(1, int(self.val) + 1):
+                if works(week, day - delta) or works(week, day + delta):
+                    return False
+
+            return True
+
         # Unknown constraint
         print(f"unhandled constraint {self.name}")
         return True
@@ -253,13 +283,15 @@ class Employee:
             return
 
         self.addConstraint(validStaffConstraint.HOURS_PER_PAY_PERIOD, 80 * self.FTE, constraintType.ABSOLUTE)
-        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
-        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.OVERLOADED, 5, constraintType.ABSOLUTE)
+        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.WEEKEND_ROTATION, 1, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.NO_DAY_AFTER_NIGHT, True, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.CONSECUTIVE_DAYS, 3, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.MINIMUM_HOURS, 80 * self.FTE * 0.8, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.ONE_PER_DAY, True, constraintType.ABSOLUTE)
+        self.addConstraint(validStaffConstraint.MIN_REST, 2, constraintType.RELATIVE)
 
         for day in ('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'):
             self.addConstraint(getattr(validStaffConstraint, f'CAN_WORK_{day.upper()}'), True, constraintType.RELATIVE)
