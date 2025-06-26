@@ -357,10 +357,7 @@ class Solver:
         self.current_score = self.score(self.state)
         print(f"After Filling state\n{self.balancer}")
         print(f"Score: {self.current_score}")
-        # Roll back if worse than post-repair
-        if self.current_score > repair_snap[1]:
-            print("Filling worsened relative cost—rolling back to repair solution")
-            restore(repair_snap)
+        # Fill doesn't roll back
         fill_snap = snapshot()
         print("-----------------Fill Phase Complete--------------")
 

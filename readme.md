@@ -131,15 +131,15 @@ Day 4: Megan,UNFILLED | Night: Liz
 Day 5: Josh,UNFILLED | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Starting Score: 1640011
+Starting Score: 1640011     
 Starting greedy initialization…
------------------Greedy Phase Complete--------------
+-----------------Greedy Phase Complete--------------    
 Greedy best state
 Week: 0
 Day 0: Megan,Britt | Night: Ashley
 Day 1: Britt,UNFILLED | Night: Megan
 Day 2: Kati,Josh | Night: Liz
-Day 3: Josh,Megan | Night: Ashley
+Day 3: Josh,Britt | Night: Ashley
 Day 4: Josh,UNFILLED | Night: Ashley
 Day 5: David,Kati | Night: Liz
 Day 6: David,Kati | Night: Liz
@@ -153,23 +153,23 @@ Day 5: Megan,UNFILLED | Night: Ashley
 Day 6: Megan,UNFILLED | Night: Ashley
 Week: 2
 Day 0: Megan,Britt | Night: Ashley
-Day 1: Britt,UNFILLED | Night: Josh
+Day 1: Britt,UNFILLED | Night: Megan
 Day 2: Josh,Kati | Night: Liz
-Day 3: Megan,Britt | Night: Ashley
+Day 3: Megan,Kati | Night: Ashley
 Day 4: Megan,UNFILLED | Night: Ashley
 Day 5: David,Josh | Night: Liz
 Day 6: David,Josh | Night: Liz
 Week: 3
-Day 0: Britt,Josh | Night: Liz
+Day 0: Josh,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Megan
-Day 2: David,Kati | Night: Ashley
+Day 2: David,Megan | Night: Ashley
 Day 3: Josh,Megan | Night: Liz
-Day 4: Megan,UNFILLED | Night: Liz
+Day 4: Josh,UNFILLED | Night: Liz
 Day 5: Britt,UNFILLED | Night: Ashley
 Day 6: Britt,UNFILLED | Night: Ashley
 Week: 4
 Day 0: Britt,Kati | Night: Ashley
-Day 1: Kati,UNFILLED | Night: Megan
+Day 1: Kati,UNFILLED | Night: Josh
 Day 2: Megan,Kati | Night: Liz
 Day 3: Britt,Josh | Night: Ashley
 Day 4: Britt,UNFILLED | Night: Ashley
@@ -177,252 +177,258 @@ Day 5: David,Megan | Night: Liz
 Day 6: David,Megan | Night: Liz
 Week: 5
 Day 0: Josh,Britt | Night: Liz
-Day 1: Britt,UNFILLED | Night: Josh
+Day 1: Britt,UNFILLED | Night: Megan
 Day 2: David,Megan | Night: Ashley
-Day 3: Josh,Megan | Night: Liz
+Day 3: Megan,Josh | Night: Liz
 Day 4: Britt,UNFILLED | Night: Liz
 Day 5: Josh,UNFILLED | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Score: 60015
+Score: 70013
 Starting post-Greedy repair…
-Repair: swapped Megan@000 with Kati@020 60015→50014
-Repair: swapped Britt@231 with Josh@030 50014→30021
-Repair: swapped Josh@021 with Kati@000 30021→30019
-Repair: swapped Britt@030 with Josh@040 30019→30018
-Repair: swapped Josh@220 with David@120 30018→20015
-Repair: swapped Josh@212 with Liz@222 20015→20014
-Repair: swapped Britt@310 with Josh@231 20014→20012
-Repair: swapped David@320 with Megan@230 20012→10019
-Repair: swapped David@230 with Kati@021 10019→10014
-Repair: swapped Britt@231 with Megan@240 10014→10013
-Repair: swapped Megan@312 with Liz@302 10013→10011
-Repair: swapped Josh@330 with Kati@130 10011→10010
-Repair: swapped Britt@131 with Kati@140 10010→10009
-Repair: swapped Josh@500 with Kati@230 10009→12
-Repair: swapped Josh@512 with Ashley@522 12→11
-Finished repairs in 16 No further repairs after 16 epochs
+Repair: swapped Megan@000 with Kati@020 70013→60013     
+Repair: swapped Megan@200 with Josh@030 60013→50021     
+Repair: swapped Josh@021 with Kati@000 50021→50019      
+Repair: swapped Britt@031 with Josh@040 50019→50018     
+Repair: swapped Josh@200 with Kati@021 50018→20015      
+Repair: swapped Josh@000 with Kati@140 20015→20014      
+Repair: swapped Megan@212 with Josh@220 20014→10014     
+Repair: swapped Britt@301 with Kati@231 10014→10013     
+Repair: swapped Kati@221 with Josh@330 10013→10010      
+Repair: swapped Britt@310 with Josh@300 10010→10009     
+Repair: swapped Josh@412 with Ashley@402 10009→10008    
+Repair: swapped Ashley@412 with Megan@512 10008→11      
+Repair: swapped Josh@500 with Megan@412 11→9
+Repair: swapped Ashley@512 with Josh@402 9→7
+Repair: swapped Josh@412 with Ashley@402 7→6
+Repair: swapped Josh@512 with Ashley@522 6→5
+Finished repairs in 17 No further repairs after 17 epochs
 After Repair state
 Week: 0
-Day 0: Josh,Britt | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
 Day 1: Britt,UNFILLED | Night: Megan
-Day 2: Megan,David | Night: Liz
-Day 3: Josh,Megan | Night: Ashley
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Josh | Night: Ashley
 Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Kati | Night: Liz
 Day 6: David,Kati | Night: Liz
 Week: 1
 Day 0: Kati,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Josh
-Day 2: Josh,Megan | Night: Ashley
-Day 3: Josh,Kati | Night: Liz
-Day 4: Britt,UNFILLED | Night: Liz
+Day 2: David,Megan | Night: Ashley
+Day 3: Kati,Britt | Night: Liz
+Day 4: Josh,UNFILLED | Night: Liz
 Day 5: Megan,UNFILLED | Night: Ashley
 Day 6: Megan,UNFILLED | Night: Ashley
 Week: 2
-Day 0: Megan,Britt | Night: Ashley
-Day 1: Britt,UNFILLED | Night: Liz
-Day 2: David,Kati | Night: Josh
-Day 3: Josh,Megan | Night: Ashley
-Day 4: Britt,UNFILLED | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,UNFILLED | Night: Josh
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Britt | Night: Ashley
+Day 4: Megan,UNFILLED | Night: Ashley
 Day 5: David,Josh | Night: Liz
 Day 6: David,Josh | Night: Liz
 Week: 3
-Day 0: Britt,Josh | Night: Megan
-Day 1: Josh,UNFILLED | Night: Liz
-Day 2: Megan,Kati | Night: Ashley
+Day 0: Britt,Kati | Night: Liz
+Day 1: Josh,UNFILLED | Night: Megan
+Day 2: David,Megan | Night: Ashley
 Day 3: Kati,Megan | Night: Liz
-Day 4: Megan,UNFILLED | Night: Liz
+Day 4: Josh,UNFILLED | Night: Liz
 Day 5: Britt,UNFILLED | Night: Ashley
 Day 6: Britt,UNFILLED | Night: Ashley
 Week: 4
-Day 0: Britt,Kati | Night: Ashley
-Day 1: Kati,UNFILLED | Night: Megan
+Day 0: Britt,Kati | Night: Josh
+Day 1: Kati,UNFILLED | Night: Ashley
 Day 2: Megan,Kati | Night: Liz
 Day 3: Britt,Josh | Night: Ashley
 Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Megan | Night: Liz
 Day 6: David,Megan | Night: Liz
 Week: 5
-Day 0: Kati,Britt | Night: Liz
+Day 0: Megan,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Ashley
 Day 2: David,Megan | Night: Josh
-Day 3: Josh,Megan | Night: Liz
+Day 3: Megan,Josh | Night: Liz
 Day 4: Britt,UNFILLED | Night: Liz
 Day 5: Josh,UNFILLED | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Score: 11
------------------Repair Phase Complete--------------     
+Score: 5
+-----------------Repair Phase Complete--------------    
 Filling Minimums…
 After Filling state
 Week: 0
-Day 0: Josh,Britt | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
 Day 1: Britt,UNFILLED | Night: Megan
-Day 2: Megan,David | Night: Liz
-Day 3: Josh,Megan | Night: Ashley
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Josh | Night: Ashley
 Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Kati | Night: Liz
 Day 6: David,Kati | Night: Liz
 Week: 1
 Day 0: Kati,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Josh
-Day 2: Josh,Megan | Night: Ashley
-Day 3: Josh,Kati | Night: Liz
-Day 4: Britt,UNFILLED | Night: Liz
+Day 2: David,Megan | Night: Ashley
+Day 3: Kati,Britt | Night: Liz
+Day 4: Josh,UNFILLED | Night: Liz
 Day 5: Megan,UNFILLED | Night: Ashley
 Day 6: Megan,UNFILLED | Night: Ashley
 Week: 2
-Day 0: Megan,Britt | Night: Ashley
-Day 1: Britt,UNFILLED | Night: Liz
-Day 2: David,Kati | Night: Josh
-Day 3: Josh,Megan | Night: Ashley
-Day 4: Britt,UNFILLED | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,UNFILLED | Night: Josh
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Britt | Night: Ashley
+Day 4: Megan,UNFILLED | Night: Ashley
 Day 5: David,Josh | Night: Liz
 Day 6: David,Josh | Night: Liz
 Week: 3
-Day 0: Britt,Josh | Night: Megan
-Day 1: Josh,UNFILLED | Night: Liz
-Day 2: Megan,Kati | Night: Ashley
+Day 0: Britt,Kati | Night: Liz
+Day 1: Josh,UNFILLED | Night: Megan
+Day 2: David,Megan | Night: Ashley
 Day 3: Kati,Megan | Night: Liz
-Day 4: Megan,UNFILLED | Night: Liz
+Day 4: Josh,UNFILLED | Night: Liz
 Day 5: Britt,UNFILLED | Night: Ashley
 Day 6: Britt,UNFILLED | Night: Ashley
 Week: 4
-Day 0: Britt,Kati | Night: Ashley
-Day 1: Kati,UNFILLED | Night: Megan
+Day 0: Britt,Kati | Night: Josh
+Day 1: Kati,UNFILLED | Night: Ashley
 Day 2: Megan,Kati | Night: Liz
 Day 3: Britt,Josh | Night: Ashley
 Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Megan | Night: Liz
 Day 6: David,Megan | Night: Liz
 Week: 5
-Day 0: Kati,Britt | Night: Liz
+Day 0: Megan,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Ashley
 Day 2: David,Megan | Night: Josh
-Day 3: Josh,Megan | Night: Liz
+Day 3: Megan,Josh | Night: Liz
 Day 4: Britt,UNFILLED | Night: Liz
 Day 5: Josh,UNFILLED | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Score: 6
------------------Fill Phase Complete--------------       
+Score: 13
+-----------------Fill Phase Complete--------------      
 Final Sweep…
 After Sweep state
 Week: 0
-Day 0: Josh,Britt | Night: Ashley
-Day 1: Britt,Kati | Night: Megan
-Day 2: Megan,David | Night: Liz
-Day 3: Josh,Megan | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,Josh | Night: Megan
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Josh | Night: Ashley
 Day 4: Britt,Josh | Night: Ashley
 Day 5: David,Kati | Night: Liz
 Day 6: David,Kati | Night: Liz
 Week: 1
 Day 0: Kati,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Josh
-Day 2: Josh,Megan | Night: Ashley
-Day 3: Josh,Kati | Night: Liz
-Day 4: Britt,Kati | Night: Liz
+Day 2: David,Megan | Night: Ashley
+Day 3: Kati,Britt | Night: Liz
+Day 4: Josh,Kati | Night: Liz
 Day 5: Megan,UNFILLED | Night: Ashley
 Day 6: Megan,UNFILLED | Night: Ashley
 Week: 2
-Day 0: Megan,Britt | Night: Ashley
-Day 1: Britt,Kati | Night: Liz
-Day 2: David,Kati | Night: Josh
-Day 3: Josh,Megan | Night: Ashley
-Day 4: Britt,Kati | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,Kati | Night: Josh
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Britt | Night: Ashley
+Day 4: Megan,Kati | Night: Ashley
 Day 5: David,Josh | Night: Liz
 Day 6: David,Josh | Night: Liz
 Week: 3
-Day 0: Britt,Josh | Night: Megan
-Day 1: Josh,Kati | Night: Liz
-Day 2: Megan,Kati | Night: Ashley
+Day 0: Britt,Kati | Night: Liz
+Day 1: Josh,UNFILLED | Night: Megan
+Day 2: David,Megan | Night: Ashley
 Day 3: Kati,Megan | Night: Liz
-Day 4: Megan,UNFILLED | Night: Liz
+Day 4: Josh,Kati | Night: Liz
 Day 5: Britt,UNFILLED | Night: Ashley
 Day 6: Britt,UNFILLED | Night: Ashley
 Week: 4
-Day 0: Britt,Kati | Night: Ashley
-Day 1: Kati,UNFILLED | Night: Megan
+Day 0: Britt,Kati | Night: Josh
+Day 1: Kati,UNFILLED | Night: Ashley
 Day 2: Megan,Kati | Night: Liz
 Day 3: Britt,Josh | Night: Ashley
-Day 4: Britt,Josh | Night: Ashley
+Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Megan | Night: Liz
 Day 6: David,Megan | Night: Liz
 Week: 5
-Day 0: Kati,Britt | Night: Liz
+Day 0: Megan,Britt | Night: Liz
 Day 1: Britt,Kati | Night: Ashley
 Day 2: David,Megan | Night: Josh
-Day 3: Josh,Megan | Night: Liz
+Day 3: Megan,Josh | Night: Liz
 Day 4: Britt,Kati | Night: Liz
-Day 5: Josh,UNFILLED | Night: Ashley
+Day 5: Josh,Kati | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Score: 6
------------------Template Complete--------------
-Final Score: 6
+Score: 13
+-----------------Template Complete--------------        
+Final Score: 13
 
---- Final Best Solution ---
+--- Final Best Solution --- 
 Week: 0
-Day 0: Josh,Britt | Night: Ashley
-Day 1: Britt,Kati | Night: Megan
-Day 2: Megan,David | Night: Liz
-Day 3: Josh,Megan | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,Josh | Night: Megan
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Josh | Night: Ashley
 Day 4: Britt,Josh | Night: Ashley
 Day 5: David,Kati | Night: Liz
 Day 6: David,Kati | Night: Liz
 Week: 1
 Day 0: Kati,Britt | Night: Liz
 Day 1: Britt,UNFILLED | Night: Josh
-Day 2: Josh,Megan | Night: Ashley
-Day 3: Josh,Kati | Night: Liz
-Day 4: Britt,Kati | Night: Liz
+Day 2: David,Megan | Night: Ashley
+Day 3: Kati,Britt | Night: Liz
+Day 4: Josh,Kati | Night: Liz
 Day 5: Megan,UNFILLED | Night: Ashley
 Day 6: Megan,UNFILLED | Night: Ashley
 Week: 2
-Day 0: Megan,Britt | Night: Ashley
-Day 1: Britt,Kati | Night: Liz
-Day 2: David,Kati | Night: Josh
-Day 3: Josh,Megan | Night: Ashley
-Day 4: Britt,Kati | Night: Ashley
+Day 0: Kati,Britt | Night: Ashley
+Day 1: Britt,Kati | Night: Josh
+Day 2: Megan,Josh | Night: Liz
+Day 3: Megan,Britt | Night: Ashley
+Day 4: Megan,Kati | Night: Ashley
 Day 5: David,Josh | Night: Liz
 Day 6: David,Josh | Night: Liz
 Week: 3
-Day 0: Britt,Josh | Night: Megan
-Day 1: Josh,Kati | Night: Liz
-Day 2: Megan,Kati | Night: Ashley
+Day 0: Britt,Kati | Night: Liz
+Day 1: Josh,UNFILLED | Night: Megan
+Day 2: David,Megan | Night: Ashley
 Day 3: Kati,Megan | Night: Liz
-Day 4: Megan,UNFILLED | Night: Liz
+Day 4: Josh,Kati | Night: Liz
 Day 5: Britt,UNFILLED | Night: Ashley
 Day 6: Britt,UNFILLED | Night: Ashley
 Week: 4
-Day 0: Britt,Kati | Night: Ashley
-Day 1: Kati,UNFILLED | Night: Megan
+Day 0: Britt,Kati | Night: Josh
+Day 1: Kati,UNFILLED | Night: Ashley
 Day 2: Megan,Kati | Night: Liz
 Day 3: Britt,Josh | Night: Ashley
-Day 4: Britt,Josh | Night: Ashley
+Day 4: Britt,UNFILLED | Night: Ashley
 Day 5: David,Megan | Night: Liz
 Day 6: David,Megan | Night: Liz
 Week: 5
-Day 0: Kati,Britt | Night: Liz
+Day 0: Megan,Britt | Night: Liz
 Day 1: Britt,Kati | Night: Ashley
 Day 2: David,Megan | Night: Josh
-Day 3: Josh,Megan | Night: Liz
+Day 3: Megan,Josh | Night: Liz
 Day 4: Britt,Kati | Night: Liz
-Day 5: Josh,UNFILLED | Night: Ashley
+Day 5: Josh,Kati | Night: Ashley
 Day 6: Josh,UNFILLED | Night: Ashley
 
-Kati relative violation Minimum Rest on 011
-Liz relative violation Minimum Rest on 212
-Kati relative violation Minimum Rest on 241
-Megan relative violation Minimum Rest on 302
-Liz relative violation Minimum Rest on 312
+Josh relative violation Day Shifts Per Week on 011      
+Josh relative violation Consecutive Days on 011
+Josh relative violation Day Shifts Per Week on 021      
+Josh relative violation Consecutive Days on 021
+Josh relative violation Day Shifts Per Week on 031      
+Josh relative violation Consecutive Days on 031
+Josh relative violation Day Shifts Per Week on 041      
+Britt relative violation Minimum Rest on 231
+Ashley relative violation Minimum Rest on 412
+Megan relative violation Minimum Rest on 500
 Ashley relative violation Minimum Rest on 512
 Global Abs Violation: 0
 Global Rel Violation: 0
 Staff Abs Violation: 0
-Staff Rel Violation: 6
-Final Score: 6
+Staff Rel Violation: 13
+Final Score: 13
 UNFILLED: 108 hrs worked total
 David: 108 hrs worked total
 Josh: 216 hrs worked total
