@@ -68,7 +68,7 @@ Or use the provided shell script:
 # Examples  
 Due to the stochastic nature of greedy search and simulated annealing, output will vary between runs. The algorithm continues refining the solution until it reaches a near-optimal state. A typical run with minimal constraints:    
 
-Initial state -> 280,004 
+Initial state -> 280,004  
 Greedy state  -> 70,009  
 Repair state  -> 10,005  
 Fill state    -> 10,000  
@@ -482,7 +482,9 @@ Ashley:
 
 ![Score by Epoch chart showing improvement over training](Results/Score_by_Epoch.png) 
 
-[📄 View Final Template (Google Sheets)](https://docs.google.com/spreadsheets/d/1pQ2ikx7xCO3GEW18450oJszRIT6FUK3cu3nQw0aWBz8/edit?usp=sharing)
+<a href="https://docs.google.com/spreadsheets/d/1pQ2ikx7xCO3GEW18450oJszRIT6FUK3cu3nQw0aWBz8/edit?usp=sharing"
+   target="_blank" rel="noopener noreferrer">View Final Template (Google Sheets)
+</a>
 
 
 # Results and Conclusion
