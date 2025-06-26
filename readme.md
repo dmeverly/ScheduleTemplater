@@ -2,8 +2,7 @@
 
 **Author**: David Everly  
 **Language**: Python  
-**Version**: 1.1  
-**License**: None  
+**Version**: 1.1   
 
 ---
 
@@ -28,6 +27,7 @@ Greedy search offers a faster alternative by selecting the best local option at 
 - [Future Work and Extension](#future-work-and-extension)
 - [References](#references)
 - [Contributing](#contributing)
+- [Licenses](#licenses)
 
 # Installation
 Dependencies:   
@@ -66,13 +66,21 @@ Or use the provided shell script:
 - solver.py contains agent search and repair methods. Those wishing to solve using another model can extend solver.py with methods suited for other algorithms.  
 
 # Examples  
-Due to the stochastic nature of greedy search and simulated annealing, output will vary between runs. The algorithm continues refining the solution until it reaches a near-optimal state. Below is the progression from a single run:  
+Due to the stochastic nature of greedy search and simulated annealing, output will vary between runs. The algorithm continues refining the solution until it reaches a near-optimal state. A typical run with minimal constraints:    
 
-Initial state -> 280,004  
+Initial state -> 280,004 
 Greedy state  -> 70,009  
 Repair state  -> 10,005  
 Fill state    -> 10,000  
 Final Sweep   -> 0  
+
+To challenge the model, constraints were added for minimum rest period between shifts and to prevent solutions involving any employee working more than 5 days in a single week:  
+
+Initial state -> 1,640,011  
+Greedy state  -> 70,013  
+Repair state  -> 5   
+Fill state    -> 13  
+Final Sweep   -> 13  
 
 <details>
 <summary>Expand Command Line Output</summary>
@@ -484,8 +492,10 @@ The model reliably generates schedule templates that satisfy both global and emp
 This solution addresses one half of the sponsor’s problem—template creation. The other half involved mapping the template to an annual calendar. I have already created a separate solution for that task (see the "Scheduler" on GitHub). A natural next step would be to integrate both tools into a unified workflow.
 
 # References  
-
 No external sources were used. However, LLM queries assisted with architectural design and debugging.  
 
 # Contributing  
 No external parties contibuted to this project.  
+
+# Licenses  
+None
