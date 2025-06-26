@@ -325,7 +325,7 @@ class Solver:
 
         history_epochs, history_scores = [], []
 
-        # 1) Greedy phase
+        # Greedy phase
         print(self.balancer)
         print(f"Starting Score: {self.current_score}")
         print("Starting greedy initialization…")
@@ -336,7 +336,7 @@ class Solver:
         print(f"Greedy best state\n{self.balancer}")
         print(f"Score: {self.current_score}")
 
-        # 2) Repair phase
+        # Repair phase
         print("Starting post-Greedy repair…")
         repair_snap = snapshot()
         self.state, history_epochs, history_scores, _ = self.repair_schedule(history_epochs, history_scores)
@@ -350,7 +350,7 @@ class Solver:
         repair_snap = snapshot()   # re-snapshot after possible rollback
         print("-----------------Repair Phase Complete--------------")
 
-        # 3) Final-fill phase
+        # Final-fill phase
         print("Filling Minimums…")
         fill_snap = snapshot()
         self.state, history_epochs, history_scores = self.finalFillMinimums(history_epochs, history_scores)
@@ -364,7 +364,7 @@ class Solver:
         fill_snap = snapshot()
         print("-----------------Fill Phase Complete--------------")
 
-        # 4) Final sweep
+        # Final sweep
         print("Final Sweep…")
         sweep_snap = snapshot()
         self.state, history_epochs, history_scores = self.finalPass(history_epochs, history_scores)
