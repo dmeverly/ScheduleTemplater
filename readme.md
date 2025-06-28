@@ -505,3 +505,5 @@ No external parties contibuted to this project.
 
 # Licenses  
 None
+
+<a href="https://www.dmeverly.com/completedprojects/Schedule%20Templater/" style="display: block; text-align:right;" target = "_blank">  Project Overview -> </a> 
