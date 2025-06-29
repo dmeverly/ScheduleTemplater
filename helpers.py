@@ -147,9 +147,37 @@ class Constraint:
                 return False
             return True
 
-        # WEEKEND_ROTATION: no more than value consecutive weekends
+        # # WEEKEND_ROTATION: no more than value consecutive weekends
+        # if self.name == validStaffConstraint.WEEKEND_ROTATION.value:
+        #     # Collect all pay-period weeks where emp worked at least one weekend day
+        #     worked_weekends = []
+        #     for w in range(W):
+        #         if any(
+        #             schedule[w, d, s] is emp
+        #             for d in (weekdays.Saturday.value, weekdays.Sunday.value)
+        #             for s in range(S)
+        #         ):
+        #             worked_weekends.append(w)
+
+        #     if not worked_weekends:
+        #         return True  
+
+        #     max_run = curr_run = 1
+        #     prev_week = worked_weekends[0]
+        #     for w in worked_weekends[1:]:
+        #         if w == prev_week + 1:
+        #             curr_run += 1
+        #         else:
+        #             curr_run = 1
+        #         if curr_run > max_run:
+        #             max_run = curr_run
+        #         prev_week = w
+
+        #     return max_run <= self.val
+
+        # WEEKEND_ROTATION: allow up to 1 back-to-back weekend (i.e., max 2 in a row)
         if self.name == validStaffConstraint.WEEKEND_ROTATION.value:
-            # Collect all pay-period weeks where emp worked at least one weekend day
+            # Collect all weeks where employee worked a weekend shift
             worked_weekends = []
             for w in range(W):
                 if any(
@@ -160,7 +188,7 @@ class Constraint:
                     worked_weekends.append(w)
 
             if not worked_weekends:
-                return True  
+                return True  # No weekends worked, so valid
 
             max_run = curr_run = 1
             prev_week = worked_weekends[0]
@@ -169,11 +197,12 @@ class Constraint:
                     curr_run += 1
                 else:
                     curr_run = 1
-                if curr_run > max_run:
-                    max_run = curr_run
+                max_run = max(max_run, curr_run)
                 prev_week = w
 
-            return max_run <= self.val
+            # Allow up to 2 consecutive weekends (1 back-to-back)
+            return max_run <= 2
+
 
         # CONSECUTIVE_DAYS: no more than value contiguous days
         if self.name == validStaffConstraint.CONSECUTIVE_DAYS.value:
@@ -190,22 +219,26 @@ class Constraint:
                     curr = 0
             return max_run <= self.val
 
-        # No day shifts for next 2 days after working night shift
+        # No day shifts for 2 days after working a night shift,
+        # and no night shifts if the next day has a scheduled day shift
         if self.name == validStaffConstraint.NO_DAY_AFTER_NIGHT.value:
-            # only applies to day slots
-            if slot not in (0, 1):
-                return True
-
             W, D, S = schedule.shape
-            # check offsets of +1, +2 days
-            for offset in (1, 2):
-                # compute tentative day index and week rollover
-                new_day = day + offset
+
+            if slot in (0, 1):  # day shift
+                # Look back 1–2 days for prior night shifts
+                for offset in (1, 2):
+                    new_day = day - offset
+                    week_delta, neighbour_day = divmod(new_day, D)
+                    neighbour_week = (week + week_delta) % W
+                    if schedule[neighbour_week, neighbour_day, 2] is emp:
+                        return False
+
+            elif slot == 2:  # night shift
+                # Look ahead 1 day for next-day day shifts
+                new_day = day + 1
                 week_delta, neighbour_day = divmod(new_day, D)
                 neighbour_week = (week + week_delta) % W
-
-                # if they did a night shift there, fail
-                if schedule[neighbour_week, neighbour_day, 2] is emp:
+                if schedule[neighbour_week, neighbour_day, 0] is emp or schedule[neighbour_week, neighbour_day, 1] is emp:
                     return False
 
             return True
@@ -283,9 +316,9 @@ class Employee:
             return
 
         self.addConstraint(validStaffConstraint.HOURS_PER_PAY_PERIOD, 80 * self.FTE, constraintType.ABSOLUTE)
-        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.OVERLOADED, 5, constraintType.ABSOLUTE)
-        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 3, constraintType.RELATIVE)
+        self.addConstraint(validStaffConstraint.NIGHTSHIFTS_PER_WEEK, 4, constraintType.RELATIVE)
         self.addConstraint(validStaffConstraint.WEEKEND_ROTATION, 1, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.NO_DAY_AFTER_NIGHT, True, constraintType.ABSOLUTE)
         self.addConstraint(validStaffConstraint.CONSECUTIVE_DAYS, 3, constraintType.RELATIVE)
