@@ -382,6 +382,7 @@ class Solver:
     def greedySearch(self):     
         best_state = self.state.copy()
         best_score = self.current_score
+        best_hours = self.hours_used.copy()
         history_epochs, history_scores = [], []
         epoch = patience = acceptCounter = 0
 

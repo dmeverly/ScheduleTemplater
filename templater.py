@@ -13,7 +13,9 @@ from openpyxl.utils import get_column_letter
 import pandas as pd
 from openpyxl import load_workbook
 
-PATHIN = 'template.xlsx'
+#change PATHIN if you want to read from a different template using .xlsx
+#another option is to use the startingTemplate.csv, which is a rough sketch of the template <- requires that undo the comment out of the import_schedule_from_csv method
+PATHIN = 'template.xlsx'   # path to the template file to read from - currently set to refeed the last exported solution!
 PATHOUT = 'template.xlsx'
 STARTERPATHIN = 'startingTemplate.csv'
 WEEKS = 6 # if reading from xlsx this needs to be exactly the same number of weeks as weeks to be copied from xlsx
@@ -156,7 +158,7 @@ class Templater:
     # import schedule from .xlsx on PATHIN
     # return state as numpy array
     # assumes the format of cells is exactly the same as the export function
-    def import_schedule_from_xlsx(self) -> np.ndarray:
+    def import_schedule_from_xlsx(self, fill_weekends=False) -> np.ndarray:
         W, D, S = WEEKS, 7, 3
         schedule = np.empty((W, D, S), dtype=object)
         name_map = {e.name: e for e in self.employees}
@@ -178,11 +180,7 @@ class Templater:
 
         for shift_idx, key in enumerate(('1','2','N')):
             start = shift_blocks[key]
-            # header_row = start + 1
             data_start = start + 2
-
-            # headers = [ws.cell(row=header_row, column=col).value
-            #            for col in range(1, D+2)]
 
             for w in range(W):
                 row_idx = data_start + w
@@ -191,6 +189,9 @@ class Templater:
                     name = cell.value if cell.value is not None else ''
                     emp = name_map.get(name, self.unfilled)
                     schedule[w, d, shift_idx] = emp
+        
+        if fill_weekends:
+            schedule = self.fillWeekends(schedule)
 
         return schedule
 
@@ -427,12 +428,13 @@ if __name__ == "__main__":
     floatpool = templater.float_pool
     unfilled = templater.unfilled
 
+    initial_schedule = templater.import_schedule_from_xlsx()  # <------ comment out to use startingTemplate.csv
+
     #create initial template using startingTemplate.csv
-    initial_schedule = templater.makeTemplate(WEEKS, fill=True)
+    #initial_schedule = templater.makeTemplate(WEEKS, fill=True)  <----- uncomment to use the startingTemplate.csv
     
     # Initialize ScheduleBalancer with the initial schedule
     schedule_balancer = ScheduleBalancer(initial_schedule, daypool, nightpool, floatpool, unfilled) 
-
     # ---------------------------------- SOLVING FUNCTIONS -------------------------------------------
     agent = Solver(schedule_balancer, daypool, nightpool, floatpool, unfilled)
 
