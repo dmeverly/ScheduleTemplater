@@ -388,6 +388,7 @@ class Templater:
 def createFigure(epochs, scores):
     _, axis = pp.subplots()
     axis.plot(epochs, scores)
+    pp.title("Score Over Time")
     pp.xlabel("Epochs")
     pp.ylabel("Score")
     pp.show()

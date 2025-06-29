@@ -82,6 +82,10 @@ Repair state  -> 5
 Fill state    -> 13  
 Final Sweep   -> 13  
 
+A pipeline was created to re-feed the solution back into the algorithm. After refeeding 2 iterations of re-feeding, the final solution produced the global optima.
+
+Final score -> 3
+
 <details>
 <summary>Expand Command Line Output</summary>
 
