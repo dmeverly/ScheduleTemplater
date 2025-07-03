@@ -147,34 +147,6 @@ class Constraint:
                 return False
             return True
 
-        # # WEEKEND_ROTATION: no more than value consecutive weekends
-        # if self.name == validStaffConstraint.WEEKEND_ROTATION.value:
-        #     # Collect all pay-period weeks where emp worked at least one weekend day
-        #     worked_weekends = []
-        #     for w in range(W):
-        #         if any(
-        #             schedule[w, d, s] is emp
-        #             for d in (weekdays.Saturday.value, weekdays.Sunday.value)
-        #             for s in range(S)
-        #         ):
-        #             worked_weekends.append(w)
-
-        #     if not worked_weekends:
-        #         return True  
-
-        #     max_run = curr_run = 1
-        #     prev_week = worked_weekends[0]
-        #     for w in worked_weekends[1:]:
-        #         if w == prev_week + 1:
-        #             curr_run += 1
-        #         else:
-        #             curr_run = 1
-        #         if curr_run > max_run:
-        #             max_run = curr_run
-        #         prev_week = w
-
-        #     return max_run <= self.val
-
         # WEEKEND_ROTATION: allow up to 1 back-to-back weekend (i.e., max 2 in a row)
         if self.name == validStaffConstraint.WEEKEND_ROTATION.value:
             # Collect all weeks where employee worked a weekend shift
@@ -351,13 +323,15 @@ class Employee:
                 self.changeConstraint(validStaffConstraint.CAN_WORK_WEDNESDAY,
                                     Constraint(validStaffConstraint.CAN_WORK_WEDNESDAY.value, False, constraintType.ABSOLUTE))
                 self.changeConstraint(validStaffConstraint.CONSECUTIVE_DAYS,
-                                    Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 4, constraintType.ABSOLUTE))
+                                    Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 5, constraintType.ABSOLUTE))
             case "Liz":
                 self.changeConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK,
                                     Constraint(validStaffConstraint.DAYSHIFTS_PER_WEEK.value, 0, constraintType.ABSOLUTE))
+                self.changeConstraint(validStaffConstraint.CONSECUTIVE_DAYS, Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 3, constraintType.ABSOLUTE))
             case "Ashley":
                 self.changeConstraint(validStaffConstraint.DAYSHIFTS_PER_WEEK,
                                     Constraint(validStaffConstraint.DAYSHIFTS_PER_WEEK.value, 0, constraintType.ABSOLUTE))
+                self.changeConstraint(validStaffConstraint.CONSECUTIVE_DAYS, Constraint(validStaffConstraint.CONSECUTIVE_DAYS.value, 3, constraintType.ABSOLUTE))
             case "Josh" | "Megan":
                 pass
             case _:

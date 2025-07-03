@@ -18,7 +18,7 @@ from openpyxl import load_workbook
 PATHIN = 'template.xlsx'   # path to the template file to read from - currently set to refeed the last exported solution!
 PATHOUT = 'template.xlsx'
 STARTERPATHIN = 'startingTemplate.csv'
-WEEKS = 6 # if reading from xlsx this needs to be exactly the same number of weeks as weeks to be copied from xlsx
+WEEKS = 12 # if reading from xlsx this needs to be exactly the same number of weeks as weeks to be copied from xlsx
 SHIFTLENGTH = 12 #hours
 NUM_SHIFTS = 3  # D1, D2, N
 DAYS_PER_WEEK = 7
@@ -485,4 +485,4 @@ if __name__ == "__main__":
             print(f"  Weeks {pay_start}-{pay_start+1}: {total_hours} hrs")
     
     #print figure
-    createFigure(epochs, scores)
+    #createFigure(epochs, scores)

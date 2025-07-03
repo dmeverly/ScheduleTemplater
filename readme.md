@@ -1,21 +1,14 @@
-## Schedule Template Creation Using Greedy Search with Simulated Annealing
+# Schedule Template Creation Using Greedy Search with Simulated Annealing
 
 **Author**: David Everly  
 **Language**: Python  
 **Version**: 1.1   
 
+### <a href="https://www.dmeverly.com/completedprojects/Schedule%20Templater/" style="display: block; text-align:right;" target = "_blank">  Project Overview -> </a>  
 ---
-
-# Problem Statement  
-The project sponsor described issues with the existing scheduling workflow, which involved manually creating a schedule template and mapping it onto an annual calendar. Conflicting employee and business constraints resulted in excessive meetings and constant revisions. I was asked to automate both the creation of the template and its mapping to the calendar. 
   
-# Description  
+## Description  
 This program automates the template creation process by accepting a rough draft of a schedule and refining it using predefined global and employee-specific constraints. The system explores the state space using greedy search combined with simulated annealing until no significant improvements are observed. This is followed by local repair and local search phases to resolve any remaining constraint violations. The final template is exported as template.xlsx.
-
-# Theoretical Approach
-Scheduling is a classic constraint satisfaction problem. Many algorithms can be applied; however, given the size of the state space, exhaustive search (DFS, BFS) is impractical. Even when weekends are hardcoded, assigning 3 shifts per weekday for 6 weeks results in a state space of: 7<sup>90</sup> states!  
-
-Greedy search offers a faster alternative by selecting the best local option at each step. However, it risks getting stuck in local minima. Simulated Annealing addresses this by occasionally accepting worse states to escape these local optima. My approach combines both methods, followed by local search and repair, to thoroughly analyze and satisfy constraints.
 
 ## Table of Contents
 - [Installation](#installation)
@@ -23,13 +16,12 @@ Greedy search offers a faster alternative by selecting the best local option at 
 - [Features](#features)
 - [Configuration](#configuration)
 - [Examples](#examples)
-- [Results and Conclusion](#results-and-conclusion)
 - [Future Work and Extension](#future-work-and-extension)
 - [References](#references)
 - [Contributing](#contributing)
 - [Licenses](#licenses)
 
-# Installation
+## Installation
 Dependencies:   
 numpy  
 pandas  
@@ -41,7 +33,7 @@ Install using:
 pip install -r requirements.txt  
 ```  
 
-# Usage
+## Usage
 Program is intended to be run using Unix-like terminal such as Linux, macOS Terminal (untested), or MINGW64 (Git Bash) on Windows.  
 
 Run the script with: 
@@ -53,19 +45,19 @@ Or use the provided shell script:
 ./run  
 ```
 
-# Features  
+## Features  
 - Multi-week template generation  
 - Custom employee constraints  
 - Greedy intialization with annealing  
 - Visualization of performance over time  
 - Template in .xlsx format  
 
-# Configuration  
+## Configuration  
 - templater.py is the main script which begins initilization and flow orchestration.  
 - Employee and constraint definitions are located in helpers.py.  These can be edited, including the addition of new constraints.  If new constraints are added, logic for constraint satisfaction needs to also be added.
 - solver.py contains agent search and repair methods. Those wishing to solve using another model can extend solver.py with methods suited for other algorithms.  
 
-# Examples  
+## Examples  
 Due to the stochastic nature of greedy search and simulated annealing, output will vary between runs. The algorithm continues refining the solution until it reaches a near-optimal state. A typical run with minimal constraints:    
 
 Initial state -> 280,004  
@@ -489,25 +481,15 @@ Ashley:
 <a href="https://docs.google.com/spreadsheets/d/1pQ2ikx7xCO3GEW18450oJszRIT6FUK3cu3nQw0aWBz8/edit?usp=sharing"
    target="_blank" rel="noopener noreferrer">View Final Template (Google Sheets)
 </a>
-
-
-# Results and Conclusion
-Because of the stochastic nature of greedy+SA, each run varies. However, nearly all runs met **all absolute** constraints and minimized **relative** violations (typically 0–20). Analysis showed most remaining violations were “minimum rest” (time between shifts) issues—removing that constraint yielded 0 total violations.  
-
-- **Greedy + SA + local repair** reliably produces schedules satisfying all absolute and most relative constraints.  
-- No fully constraint-free solution was possible without staffing extra hours on “underserved” days—indicating the organization has more staffing capacity than demand.  
-- The automation reduces manual effort dramatically compared to hand-crafting templates.  
-
-# Future Work and Extension  
+  
+## Future Work and Extension  
 This solution addresses one half of the sponsor’s problem—template creation. The other half involved mapping the template to an annual calendar. I have already created a separate solution for that task (see the "Scheduler" on GitHub). A natural next step would be to integrate both tools into a unified workflow.
 
-# References  
+## References  
 No external sources were used. However, LLM queries assisted with architectural design and debugging.  
 
-# Contributing  
+## Contributing  
 No external parties contibuted to this project.  
 
-# Licenses  
+## Licenses  
 None
-
-<a href="https://www.dmeverly.com/completedprojects/Schedule%20Templater/" style="display: block; text-align:right;" target = "_blank">  Project Overview -> </a> 
