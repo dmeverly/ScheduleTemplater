@@ -493,3 +493,8 @@ No external parties contibuted to this project.
 
 ## Licenses  
 None
+
+## Disclaimer  
+This project was developed independently on personal time and is not affiliated with or endorsed by any employer or healthcare organization.  
+All data used is publicly available and non-identifiable.  
+All opinions and methods reflect personal research and experimentation.
